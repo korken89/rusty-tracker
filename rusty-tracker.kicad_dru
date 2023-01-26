@@ -1,0 +1,9 @@
+(version 1)
+
+(rule "GND to RF clearance"
+    (condition "A.NetClass == 'RF' && B.NetName == 'GND' && B.Type == 'Zone'")
+    (constraint clearance (min 0.2mm)))
+
+#(rule "GND to Ethernet clearance"
+#    (condition "A.NetClass == 'Ethernet Internal' && A.Layer == 'In2.Cu' && B.NetName == 'GND' && B.Type == 'Zone'")
+#    (constraint clearance (min 1mm)))

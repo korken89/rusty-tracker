@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "rusty-tracker")(type "KiCad")(uri "${KIPRJMOD}/../rusty-tracker.pretty")(options "")(descr ""))
+)
