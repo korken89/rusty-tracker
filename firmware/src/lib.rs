@@ -4,7 +4,7 @@
 #![allow(incomplete_features)]
 
 use defmt_rtt as _; // global logger
-pub use nrf52832_hal as hal; // memory layout
+pub use nrf52840_hal as hal; // memory layout
 
 use panic_probe as _;
 

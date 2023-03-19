@@ -10,7 +10,7 @@ cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
 defmt = "0.3"
 defmt-rtt = "0.4"
 fugit = { version = "0.3", features = ["defmt"] }
-nrf52832-hal = { git = "https://github.com/korken89/nrf-hal.git", branch = "dma-spim" }
+nrf52840-hal = "0.16"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 rtic = { git = "https://github.com/rtic-rs/rtic.git", features = ["thumbv7-backend"] }
 rtic-monotonics = { git = "https://github.com/rtic-rs/rtic.git", features = ["cortex-m-systick"]}

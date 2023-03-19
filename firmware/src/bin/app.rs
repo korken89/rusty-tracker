@@ -17,32 +17,37 @@ defmt::timestamp!("{=u64:us}", {
 #[rtic::app(device = rusty_tracker::hal::pac, dispatchers = [SWI0_EGU0])]
 mod app {
     use rtic_monotonics::systick::*;
-    use rusty_tracker::bsp;
+    use rusty_tracker::bsp::{self, BoardLeds, Voltages};
 
     #[shared]
     struct Shared {}
 
     #[local]
-    struct Local {}
+    struct Local {
+        leds: BoardLeds,
+        voltages: Voltages,
+    }
 
     #[init]
     fn init(cx: init::Context) -> (Shared, Local) {
         defmt::println!("pre init");
 
-        let () = bsp::init(cx.core, cx.device);
+        let (leds, voltages) = bsp::init(cx.core, cx.device);
 
         defmt::println!("init");
 
         task1::spawn().ok();
 
-        (Shared {}, Local {})
+        (Shared {}, Local { leds, voltages })
     }
 
-    #[task]
-    async fn task1(_: task1::Context) {
+    #[task(local = [leds, voltages])]
+    async fn task1(cx: task1::Context) {
         loop {
-            defmt::info!("hello");
-            Systick::delay(100.millis()).await;
+            let vbat = cx.local.voltages.measure_vbat();
+            let vusb = cx.local.voltages.measure_vusb();
+            defmt::info!("hello, vbat = {} V, vusb = {} V", vbat, vusb);
+            Systick::delay(200.millis()).await;
         }
     }
 }
