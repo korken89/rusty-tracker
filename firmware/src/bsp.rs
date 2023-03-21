@@ -10,6 +10,7 @@ use crate::hal::{
     saadc::{Reference, SaadcConfig, Time},
     Saadc,
 };
+use nrf52840_hal::saadc::InternalVddHdiv5;
 use rtic_monotonics::systick::Systick;
 
 pub struct BoardLeds {
@@ -28,7 +29,7 @@ impl BoardLeds {
 }
 
 pub struct Voltages {
-    vbat: P0_02<Input<Floating>>,
+    vbat: InternalVddHdiv5,
     vusb: P0_29<Input<Floating>>,
     adc: Saadc,
 }
@@ -39,7 +40,7 @@ impl Voltages {
             // VP = (RES / (2^13)) * 2 * (5/12)
 
             let res = v as f32;
-            let vp = (res / ((1 << 14) as f32 * (5. / 12.))) * 3.2;
+            let vp = (res / ((1 << 14) as f32 * (5. / 12.))) * 5.;
 
             vp
         } else {
@@ -70,7 +71,7 @@ pub fn init(c: cortex_m::Peripherals, p: pac::Peripherals) -> (BoardLeds, Voltag
 
     let port0 = p0::Parts::new(p.P0);
 
-    let vbat_pin = port0.p0_02.into_floating_input();
+    // let vbat_pin = port0.p0_02.into_floating_input();
     let vusb_pin = port0.p0_29.into_floating_input();
     let adc = Saadc::new(
         p.SAADC,
@@ -82,7 +83,7 @@ pub fn init(c: cortex_m::Peripherals, p: pac::Peripherals) -> (BoardLeds, Voltag
     );
 
     let voltages = Voltages {
-        vbat: vbat_pin,
+        vbat: InternalVddHdiv5,
         vusb: vusb_pin,
         adc,
     };
