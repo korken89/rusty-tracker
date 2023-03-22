@@ -6,10 +6,10 @@
 
 There are 2 versions of the board, based on:
 
-1. nRF9160 + uBlox M10S GNSS
-2. uBlox R422-M10S
+1. uBlox R422-M10S
+2. nRF9160 + uBlox M10S GNSS
 
-which can be found in the `master` branch and `ublox` branch respectively.
+which can be found in the `master` branch and `nrf` branch respectively.
 
 The two IFA antennas are simulated with Ansys HFSS, files are available.
 
