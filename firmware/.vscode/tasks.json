@@ -1,0 +1,39 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"command": "cargo",
+			"args": [
+				"brb",
+				"app"
+			],
+			"options": {
+				"env": {
+					"DEFMT_LOG": "info",
+				}
+			},
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build",
+			"label": "build binary app"
+		},
+		{
+			"command": "cargo",
+			"args": [
+				"rrb",
+				"app"
+			],
+			"options": {
+				"env": {
+					"DEFMT_LOG": "info",
+				}
+			},
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build",
+			"label": "run binary app"
+		}
+	]
+}

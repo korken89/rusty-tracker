@@ -1,0 +1,56 @@
+[package]
+# TODO(1) fix `authors` and `name` if you didn't use `cargo-generate`
+authors = ["Emil Fresk <emil.fresk@gmail.com>"]
+name = "rusty-tracker"
+edition = "2021"
+version = "0.1.0"
+
+[dependencies]
+cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
+defmt = "0.3"
+defmt-rtt = "0.4"
+#defmt-brtt = { git = "https://github.com/datdenkikniet/defmt-brtt.git" }
+fugit = { version = "0.3", features = ["defmt"] }
+nrf52840-hal = "0.16"
+panic-probe = { version = "0.3", features = ["print-defmt"] }
+rtic = { git = "https://github.com/rtic-rs/rtic.git", features = ["thumbv7-backend"] }
+rtic-monotonics = { git = "https://github.com/rtic-rs/rtic.git", features = ["cortex-m-systick"]}
+rtic-sync = { git = "https://github.com/rtic-rs/rtic.git" }
+
+# cargo build/run
+[profile.dev]
+codegen-units = 1
+debug = 2
+debug-assertions = true # <-
+incremental = false
+opt-level = "s" # <-
+overflow-checks = true # <-
+
+# cargo test
+[profile.test]
+codegen-units = 1
+debug = 2
+debug-assertions = true # <-
+incremental = false
+opt-level = "s" # <-
+overflow-checks = true # <-
+
+# cargo build/run --release
+[profile.release]
+codegen-units = 1
+debug = 2
+debug-assertions = false # <-
+incremental = false
+lto = 'fat'
+opt-level = "s" # <-
+overflow-checks = false # <-
+
+# cargo test --release
+[profile.bench]
+codegen-units = 1
+debug = 2
+debug-assertions = false # <-
+incremental = false
+lto = 'fat'
+opt-level = "s" # <-
+overflow-checks = false # <-
