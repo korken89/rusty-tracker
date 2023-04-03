@@ -4,12 +4,12 @@
 #![allow(incomplete_features)]
 
 use defmt_rtt as _; // global logger
-pub use nrf52840_hal as hal; // memory layout
+                    // pub use nrf52840_hal as hal; // memory layout
 
 use panic_probe as _;
 
-pub mod bsp;
-pub mod tasks;
+// pub mod bsp;
+// pub mod tasks;
 
 // same panicking *behavior* as `panic-probe` but doesn't print a panic message
 // this prevents the panic message being printed *twice* when `defmt::panic` is invoked

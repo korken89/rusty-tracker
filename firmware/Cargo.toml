@@ -11,11 +11,14 @@ defmt = "0.3"
 defmt-rtt = "0.4"
 #defmt-brtt = { git = "https://github.com/datdenkikniet/defmt-brtt.git" }
 fugit = { version = "0.3", features = ["defmt"] }
-nrf52840-hal = "0.16"
+# nrf52840-hal = "0.16"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 rtic = { git = "https://github.com/rtic-rs/rtic.git", features = ["thumbv7-backend"] }
 rtic-monotonics = { git = "https://github.com/rtic-rs/rtic.git", features = ["cortex-m-systick"]}
 rtic-sync = { git = "https://github.com/rtic-rs/rtic.git" }
+
+embassy-nrf = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "nrf52840", "time-driver-rtc1", "gpiote", "unstable-pac", "time"] }
+embassy-usb = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "msos-descriptor",] }
 
 # cargo build/run
 [profile.dev]
