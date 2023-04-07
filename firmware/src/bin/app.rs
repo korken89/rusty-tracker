@@ -23,6 +23,7 @@ pub mod pac {
 
 #[rtic::app(device = crate::pac, dispatchers = [SWI0_EGU0], peripherals = false)]
 mod app {
+    use at_commands::parser::CommandParser;
     use embassy_nrf::config::HfclkSource;
     use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pull};
     use embassy_nrf::peripherals::{P0_04, P0_08, PWM0, TIMER0, UARTE0};
@@ -62,13 +63,13 @@ mod app {
         let vib = Output::new(p.P0_30, Level::Low, OutputDrive::Standard);
         core::mem::forget(vib);
         let buz = Output::new(p.P0_02, Level::Low, OutputDrive::Standard);
-        core::mem::forget(vib);
+        core::mem::forget(buz);
 
         //
         // Setup LED PWM
         //
         let red = p.P1_13;
-        let green = p.P0_30;
+        let green = p.P0_29;
         let blue = p.P1_10;
 
         let mut pwm = SimplePwm::new_3ch(p.PWM0, red, green, blue);
@@ -135,7 +136,7 @@ mod app {
     #[task]
     async fn modem_status(
         _: modem_status::Context,
-        mut lte_on: Input<'static, P0_04>,
+        lte_on: Input<'static, P0_04>,
         mut lte_pwr: Output<'static, P0_08>,
     ) {
         'outer: loop {
@@ -146,21 +147,22 @@ mod app {
 
             for _ in 0..10 {
                 if lte_on.is_high() {
+                    defmt::println!("LTE modem started!");
                     break 'outer;
                 }
                 Systick::delay(500.millis()).await;
             }
         }
 
-        defmt::println!("LTE modem started!");
-
         loop {
-            Systick::delay(500.millis()).await;
+            Systick::delay(1_000.millis()).await;
         }
     }
 
     #[task]
     async fn modem_talker(_: modem_talker::Context, mut tx: UarteTx<'static, UARTE0>) {
+        Systick::delay(5_000.millis()).await;
+
         loop {
             defmt::println!("Sending request");
             tx.write(b"AT+CIMI\r\n").await.unwrap();
@@ -175,10 +177,11 @@ mod app {
         let mut buf = [0; 1024];
         loop {
             let r = rx.read_until_idle(&mut buf).await.unwrap();
-            defmt::println!("Received {} bytes: {:x}", r, &buf[..r]);
-            if let Ok(s) = core::str::from_utf8(&buf[..r]) {
-                defmt::println!("String: {}", s);
-            }
+            defmt::println!(
+                "Received {} bytes: {}",
+                r,
+                core::str::from_utf8(&buf[..r]).unwrap()
+            );
             Systick::delay(100.millis()).await;
         }
     }
@@ -192,13 +195,28 @@ mod app {
     ) {
         // rusty_tracker::tasks::led_control(leds, voltages, charger_status).await;
         loop {
-            defmt::println!("...");
+            leds.enable();
+            // defmt::println!("...");
             leds.set_duty(0, 990);
             leds.set_duty(1, 1000);
-            Systick::delay(500.millis()).await;
+            leds.set_duty(2, 1000);
+            Systick::delay(200.millis()).await;
+
             leds.set_duty(0, 1000);
             leds.set_duty(1, 990);
-            Systick::delay(500.millis()).await;
+            leds.set_duty(2, 1000);
+            Systick::delay(200.millis()).await;
+
+            leds.set_duty(0, 1000);
+            leds.set_duty(1, 1000);
+            leds.set_duty(2, 990);
+            Systick::delay(200.millis()).await;
+
+            leds.set_duty(0, 1000);
+            leds.set_duty(1, 1000);
+            leds.set_duty(2, 1000);
+            leds.disable();
+            Systick::delay(1000.millis()).await;
         }
     }
 }
