@@ -28,13 +28,15 @@ mod app {
     use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pull};
     use embassy_nrf::peripherals::{P0_04, P0_08, PWM0, TIMER0, UARTE0};
     use embassy_nrf::pwm::{Prescaler, SimplePwm};
+    use embassy_nrf::saadc::Saadc;
     use embassy_nrf::uarte::{UarteRxWithIdle, UarteTx};
-    use embassy_nrf::{bind_interrupts, uarte};
+    use embassy_nrf::{bind_interrupts, saadc, uarte};
     use rtic_monotonics::systick::*;
     // use rusty_tracker::bsp::{self, BoardLeds, ChargerStatus, Voltages};
 
     bind_interrupts!(struct Irqs {
         UARTE0_UART0 => uarte::InterruptHandler<UARTE0>;
+        SAADC => saadc::InterruptHandler;
     });
 
     #[shared]
@@ -64,6 +66,16 @@ mod app {
         core::mem::forget(vib);
         let buz = Output::new(p.P0_02, Level::Low, OutputDrive::Standard);
         core::mem::forget(buz);
+
+        //
+        // Battery measurement
+        //
+        let mut config = saadc::Config::default();
+        config.resolution = saadc::Resolution::_12BIT;
+        let mut channel_config = saadc::ChannelConfig::single_ended(saadc::VddhDiv5Input);
+        channel_config.time = saadc::Time::_40US;
+        channel_config.gain = saadc::Gain::GAIN1_4;
+        let saadc = Saadc::new(p.SAADC, Irqs, config, [channel_config]);
 
         //
         // Setup LED PWM
@@ -126,18 +138,30 @@ mod app {
         defmt::println!("init done");
 
         led_control::spawn(pwm).ok();
-        modem_talker::spawn(tx).ok();
+        battery_measurement::spawn(saadc).ok();
+        modem_talker::spawn(lte_on, lte_pwr, tx).ok();
         modem_listener::spawn(rx).ok();
-        modem_status::spawn(lte_on, lte_pwr).ok();
 
         (Shared {}, Local {})
     }
 
     #[task]
-    async fn modem_status(
-        _: modem_status::Context,
+    async fn battery_measurement(_: battery_measurement::Context, mut adc: Saadc<'static, 1>) {
+        loop {
+            let mut buf = [0; 1];
+            adc.sample(&mut buf).await;
+            let voltage = (buf[0] as f32 / ((1 << 12) as f32 * (5. / 12.))) * 5.;
+            defmt::println!("Battery voltage: {} V", voltage);
+            Systick::delay(10.secs()).await;
+        }
+    }
+
+    #[task]
+    async fn modem_talker(
+        _: modem_talker::Context,
         lte_on: Input<'static, P0_04>,
         mut lte_pwr: Output<'static, P0_08>,
+        mut tx: UarteTx<'static, UARTE0>,
     ) {
         'outer: loop {
             defmt::println!("Trying to start LTE modem");
@@ -154,18 +178,30 @@ mod app {
             }
         }
 
-        loop {
-            Systick::delay(1_000.millis()).await;
-        }
-    }
+        defmt::println!("Sending request");
+        tx.write(b"ATI\r\n").await.unwrap(); // IMSI
+        Systick::delay(100.millis()).await;
+        tx.write(b"AT+CIMI\r\n").await.unwrap(); // IMSI
+        Systick::delay(100.millis()).await;
+        tx.write(b"AT+CGSN\r\n").await.unwrap(); // IMEI
+        Systick::delay(100.millis()).await;
+        tx.write(b"AT+UBANDMASK?\r\n").await.unwrap(); // IMEI
+        Systick::delay(100.millis()).await;
+        tx.write(b"AT+UMNOPROF?\r\n").await.unwrap(); // IMEI
+        Systick::delay(100.millis()).await;
 
-    #[task]
-    async fn modem_talker(_: modem_talker::Context, mut tx: UarteTx<'static, UARTE0>) {
-        Systick::delay(5_000.millis()).await;
+        defmt::println!("Sending request");
+        tx.write(b"AT+UDNSRN=0,\"korken89.duckdns.org\"\r\n")
+            .await
+            .unwrap(); // IMEI
+
+        Systick::delay(3000.millis()).await;
+
+        // tx.write(b"AT+CSQ?\r\n").await.unwrap(); // IMEI
+        tx.write(b"AT+UCFSCAN=7\r\n").await.unwrap(); // IMEI
 
         loop {
-            defmt::println!("Sending request");
-            tx.write(b"AT+CIMI\r\n").await.unwrap();
+            // tx.write(b"AT+CSQ?\r\n").await.unwrap(); // IMEI
             Systick::delay(1_000.millis()).await;
         }
     }
@@ -182,7 +218,7 @@ mod app {
                 r,
                 core::str::from_utf8(&buf[..r]).unwrap()
             );
-            Systick::delay(100.millis()).await;
+            // Systick::delay(100.millis()).await;
         }
     }
 
