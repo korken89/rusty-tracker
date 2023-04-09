@@ -89,11 +89,11 @@ mod app {
         pwm.set_prescaler(Prescaler::Div128);
         pwm.set_max_duty(1000);
 
-        // pwm.disable();
-
         pwm.set_duty(0, 1000);
         pwm.set_duty(1, 1000);
         pwm.set_duty(2, 1000);
+
+        pwm.disable();
 
         //
         // Charger
@@ -132,7 +132,7 @@ mod app {
         // GPS connections
         //
 
-        let systick_token = rtic_monotonics::make_systick_handler!();
+        let systick_token = rtic_monotonics::create_systick_token!();
         Systick::start(cx.core.SYST, 64_000_000, systick_token);
 
         defmt::println!("init done");
@@ -179,29 +179,50 @@ mod app {
         }
 
         defmt::println!("Sending request");
-        tx.write(b"ATI\r\n").await.unwrap(); // IMSI
+        tx.write(b"ATI\r\n").await.unwrap(); // Module name
         Systick::delay(100.millis()).await;
         tx.write(b"AT+CIMI\r\n").await.unwrap(); // IMSI
         Systick::delay(100.millis()).await;
         tx.write(b"AT+CGSN\r\n").await.unwrap(); // IMEI
         Systick::delay(100.millis()).await;
-        tx.write(b"AT+UBANDMASK?\r\n").await.unwrap(); // IMEI
+        tx.write(b"AT+URAT?\r\n").await.unwrap();
         Systick::delay(100.millis()).await;
-        tx.write(b"AT+UMNOPROF?\r\n").await.unwrap(); // IMEI
+        // tx.write(b"AT+UBANDMASK?\r\n").await.unwrap(); // IMEI
+        // Systick::delay(100.millis()).await;
+        // tx.write(b"AT+UMNOPROF?\r\n").await.unwrap(); // IMEI
+        // Systick::delay(100.millis()).await;
+        // defmt::println!("Sending APN");
+        //     tx.write(b"AT+UPSD=0,1,\"iot.1nce.net\"\r\n").await.unwrap(); // IMEI
+        // Systick::delay(100.millis()).await;
+        // tx.write(b"AT+UPSD=0\r\n").await.unwrap(); // IMEI
+        // Systick::delay(100.millis()).await;
+
+        // defmt::println!("Sending request");
+        // tx.write(b"AT+UDNSRN=0,\"korken89.duckdns.org\"\r\n")
+        //     .await
+        //     .unwrap(); // IMEI
+
+        // Systick::delay(3000.millis()).await;
+
+        // // tx.write(b"AT+CSQ?\r\n").await.unwrap(); // IMEI
+        // tx.write(b"AT+UCFSCAN=7\r\n").await.unwrap(); // IMEI
+
+        tx.write(b"AT+USOCR=6\r\n").await.unwrap();
         Systick::delay(100.millis()).await;
 
-        defmt::println!("Sending request");
-        tx.write(b"AT+UDNSRN=0,\"korken89.duckdns.org\"\r\n")
+        tx.write(b"AT+USOCO=0,\"79.136.27.216\",5684\r\n")
             .await
-            .unwrap(); // IMEI
-
-        Systick::delay(3000.millis()).await;
-
-        // tx.write(b"AT+CSQ?\r\n").await.unwrap(); // IMEI
-        tx.write(b"AT+UCFSCAN=7\r\n").await.unwrap(); // IMEI
+            .unwrap();
+        Systick::delay(100.millis()).await;
+        defmt::println!("Sending data");
+        tx.write(b"AT+USOWR=0,12,\"Hello world!\"\r\n")
+            .await
+            .unwrap();
+        Systick::delay(100.millis()).await;
 
         loop {
             // tx.write(b"AT+CSQ?\r\n").await.unwrap(); // IMEI
+            tx.write(b"AT+USORD=0,0\r\n").await.unwrap();
             Systick::delay(1_000.millis()).await;
         }
     }
