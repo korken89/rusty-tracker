@@ -7,19 +7,30 @@ version = "0.1.0"
 
 [dependencies]
 cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
+
 defmt = "0.3"
 defmt-rtt = "0.4"
-#defmt-brtt = { git = "https://github.com/datdenkikniet/defmt-brtt.git" }
-fugit = { version = "0.3", features = ["defmt"] }
-# nrf52840-hal = "0.16"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
+#defmt-brtt = { git = "https://github.com/datdenkikniet/defmt-brtt.git" }
+
 rtic = { version = "2.0.0-alpha.1", features = ["thumbv7-backend"] }
-rtic-monotonics = { version = "1.0.0-alpha.1", features = ["cortex-m-systick"]}
+rtic-monotonics = { version = "1.0.0-alpha.1", features = ["cortex-m-systick", "nrf52840"] }
 rtic-sync = "1.0.0-alpha.0"
+
 at-commands = { version = "0.5.3", features = ["defmt"] }
+arrayvec = { version = "0.7.2", default-features = false }
+futures = { version = "0.3", default-features = false, features = ["async-await"] }
 
 embassy-nrf = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "nrf52840", "time-driver-rtc1", "gpiote", "unstable-pac", "time"] }
-embassy-usb = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "msos-descriptor",] }
+embassy-usb = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "msos-descriptor"] }
+
+[dev-dependencies]
+tokio = { version = "1.27", features = ["rt", "macros", "time"] }
+
+[[bin]]
+name = "app"
+test = false
+bench = false
 
 # cargo build/run
 [profile.dev]

@@ -3,6 +3,10 @@
 #![feature(async_fn_in_trait)]
 #![allow(incomplete_features)]
 
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
 use defmt_rtt as _; // global logger
                     // pub use nrf52840_hal as hal; // memory layout
 
@@ -10,6 +14,7 @@ use panic_probe as _;
 
 // pub mod bsp;
 // pub mod tasks;
+pub mod r4_modem;
 
 // same panicking *behavior* as `panic-probe` but doesn't print a panic message
 // this prevents the panic message being printed *twice* when `defmt::panic` is invoked

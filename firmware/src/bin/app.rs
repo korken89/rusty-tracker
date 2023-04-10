@@ -4,8 +4,7 @@
 #![feature(async_fn_in_trait)]
 #![allow(incomplete_features)]
 
-use fugit::MicrosDurationU32;
-use rtic_monotonics::{systick::Systick, Monotonic};
+use rtic_monotonics::{nrf::timer::fugit::MicrosDurationU32, systick::Systick, Monotonic};
 use rusty_tracker as _; // global logger + panicking-behavior + memory layout
 
 defmt::timestamp!("{=u64:us}", {

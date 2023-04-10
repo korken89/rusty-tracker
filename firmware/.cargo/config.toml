@@ -16,3 +16,4 @@ target = "thumbv7em-none-eabihf" # Cortex-M4F and Cortex-M7F (with FPU)
 [alias]
 rrb = "run --release --bin"
 brb = "build --release --bin"
+test-lib = "test --target x86_64-unknown-linux-gnu"
