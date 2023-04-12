@@ -2,7 +2,7 @@
 //!
 //! The modem has 2 different kinds of messages that can be received by the host:
 //!
-//! 1. Response to send commands
+//! 1. Response to sent commands
 //! 2. Unsolicited messages (eg a notification that there is data to read on a socket)
 //!
 //! Both need to work concurrently.
@@ -141,5 +141,71 @@ where
 #[cfg(test)]
 mod tests {
     #[tokio::test]
-    async fn it_works() {}
+    async fn it_works() {
+        // let (rx, tx) = tokio::sync::mpsc::channel(100);
+        loop {}
+    }
+}
+
+mod api {
+    mod modem {
+        pub enum Protocol {
+            Tcp,
+            Udp,
+        }
+
+        pub struct Socket<const N: usize> {
+            // TODO
+        }
+
+        pub async fn init() -> Result<
+            (
+                Socket<0>,
+                Socket<1>,
+                socket<2>,
+                Socket<3>,
+                Socket<4>,
+                Socket<5>,
+            ),
+            (),
+        > {
+            todo!()
+        }
+
+        pub struct Connection<const N: usize> {
+            // TODO
+        }
+
+        impl<const N: usize> Connection<N> {
+            // TODO, API goes here
+
+            pub async fn wait_for_bytes_available(&mut self) -> usize {
+                todo!()
+            }
+
+            pub async fn bytes_available(&mut self) -> usize {
+                todo!()
+            }
+
+            pub async fn read(&mut self, buf: &mut [u8]) -> usize {
+                todo!()
+            }
+
+            pub async fn write(&mut self, buf: &[u8]) {
+                todo!()
+            }
+        }
+
+        pub async fn connect_socket<const N: usize>(
+            socket: Socket<N>,
+            tcp: Protocol,
+        ) -> Connection<N> {
+            todo!()
+        }
+    }
+
+    async fn api() {
+        let (s0, ..) = modem::init().await.unwrap();
+        let socket = modem::connect_socket(s0, modem::Protocol::Tcp).await;
+    }
 }

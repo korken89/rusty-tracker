@@ -14,7 +14,6 @@ defmt::timestamp!("{=u64:us}", {
 });
 
 pub mod pac {
-    pub const NVIC_PRIO_BITS: u8 = 2;
     // pub use cortex_m_rt::interrupt;
     pub use embassy_nrf::pac::Interrupt as interrupt;
     pub use embassy_nrf::pac::*;
@@ -177,15 +176,22 @@ mod app {
             }
         }
 
-        defmt::println!("Sending request");
+        defmt::println!("Sending: ATI");
         tx.write(b"ATI\r\n").await.unwrap(); // Module name
         Systick::delay(100.millis()).await;
+
+        defmt::println!("Sending: AT+CIMI");
         tx.write(b"AT+CIMI\r\n").await.unwrap(); // IMSI
         Systick::delay(100.millis()).await;
+
+        defmt::println!("Sending: AT+CGSN");
         tx.write(b"AT+CGSN\r\n").await.unwrap(); // IMEI
         Systick::delay(100.millis()).await;
+
+        defmt::println!("Sending: AT+URAT?");
         tx.write(b"AT+URAT?\r\n").await.unwrap();
         Systick::delay(100.millis()).await;
+
         // tx.write(b"AT+UBANDMASK?\r\n").await.unwrap(); // IMEI
         // Systick::delay(100.millis()).await;
         // tx.write(b"AT+UMNOPROF?\r\n").await.unwrap(); // IMEI
@@ -206,25 +212,30 @@ mod app {
         // // tx.write(b"AT+CSQ?\r\n").await.unwrap(); // IMEI
         // tx.write(b"AT+UCFSCAN=7\r\n").await.unwrap(); // IMEI
 
+        defmt::println!("Sending: AT+USOCR=6");
         tx.write(b"AT+USOCR=6\r\n").await.unwrap();
         Systick::delay(100.millis()).await;
 
+        defmt::println!("Sending: AT+USOCO=0,\"79.136.27.216\",5684");
         tx.write(b"AT+USOCO=0,\"79.136.27.216\",5684\r\n")
-            .await
-            .unwrap();
-        Systick::delay(100.millis()).await;
-        defmt::println!("Sending data");
-        tx.write(b"AT+USOWR=0,12,\"Hello world!\"\r\n")
             .await
             .unwrap();
         Systick::delay(100.millis()).await;
 
         loop {
-            // tx.write(b"AT+CSQ?\r\n").await.unwrap(); // IMEI
+            defmt::println!("Sending: AT+USOWR=0,12,\"Hello world!\"");
+            tx.write(b"AT+USOWR=0,12,\"Hello world!\"\r\n")
+                .await
+                .unwrap();
+            Systick::delay(100.millis()).await;
+
+            // Read how many bytes on socket
+            defmt::println!("Sending: AT+USORD=0,0");
             tx.write(b"AT+USORD=0,0\r\n").await.unwrap();
             Systick::delay(1_000.millis()).await;
         }
     }
+
     #[task]
     async fn modem_listener(
         _: modem_listener::Context,
@@ -234,8 +245,9 @@ mod app {
         loop {
             let r = rx.read_until_idle(&mut buf).await.unwrap();
             defmt::println!(
-                "Received {} bytes: {}",
+                "Received {} bytes: {}\n{}",
                 r,
+                &buf[..r],
                 core::str::from_utf8(&buf[..r]).unwrap()
             );
             // Systick::delay(100.millis()).await;

@@ -1,0 +1,510 @@
+0.000000 pre init
+└─ app::app::init @ src/bin/app.rs:48
+0.000000 INFO  uarte initialized!
+└─ app::app::init @ src/bin/app.rs:127
+0.000000 init done
+└─ app::app::init @ src/bin/app.rs:136
+0.016000 Trying to start LTE modem
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:165
+0.016000 Battery voltage: 4.086914 V
+└─ app::app::battery_measurement::{async_fn#0} @ src/bin/app.rs:152
+0.516000 LTE modem started!
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:172
+0.516000 Sending: ATI
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:179
+0.526000 Received 30 bytes: [13, 10, 83, 65, 82, 65, 45, 82, 52, 50, 50, 77, 49, 48, 83, 45, 48, 49, 66, 45, 48, 48, 13, 10, 13, 10, 79, 75, 13, 10]
+
+SARA-R422M10S-01B-00
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+0.616000 Sending: AT+CIMI
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:183
+0.631000 Received 25 bytes: [13, 10, 57, 48, 49, 52, 48, 53, 49, 48, 50, 55, 53, 56, 56, 48, 49, 13, 10, 13, 10, 79, 75, 13, 10]
+
+901405102758801
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+0.716000 Sending: AT+CGSN
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:187
+0.723000 Received 25 bytes: [13, 10, 51, 53, 49, 49, 54, 54, 55, 48, 48, 50, 54, 49, 57, 54, 51, 13, 10, 13, 10, 79, 75, 13, 10]
+
+351166700261963
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+0.816000 Sending: AT+URAT?
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:191
+0.829000 Received 22 bytes: [13, 10, 43, 85, 82, 65, 84, 58, 32, 55, 44, 56, 44, 57, 13, 10, 13, 10, 79, 75, 13, 10]
+
++URAT: 7,8,9
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+0.916000 Sending: AT+USOCR=6
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:215
+0.930000 Received 19 bytes: [13, 10, 43, 85, 83, 79, 67, 82, 58, 32, 48, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOCR: 0
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+1.017000 Sending: AT+USOCO=0,"79.136.27.216",5684
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:219
+1.119000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+1.221000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+1.552000 Received 6 bytes: [13, 10, 79, 75, 13, 10]
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+2.222000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+2.231000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+2.328000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+2.336000 Received 23 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,0
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+3.344000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+3.358000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+3.446000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+3.454000 Received 23 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,0
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+4.447000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+4.460000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+4.549000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+4.557000 Received 23 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,0
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+5.550000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+5.559000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+5.656000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+5.663000 Received 23 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,0
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+6.672000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+6.685000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+6.774000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+6.782000 Received 23 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,0
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+7.440000 Received 16 bytes: [13, 10, 43, 85, 85, 83, 79, 82, 68, 58, 32, 48, 44, 53, 13, 10]
+
++UUSORD: 0,5
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+7.775000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+7.784000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+7.877000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+7.892000 Received 23 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 53, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,5
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+8.878000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+8.892000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+8.984000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+8.992000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 49, 53, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,15
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+10.000000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+10.009000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+10.016000 Battery voltage: 4.0664062 V
+└─ app::app::battery_measurement::{async_fn#0} @ src/bin/app.rs:152
+10.102000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+10.110000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 49, 53, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,15
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+11.103000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+11.117000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+11.205000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+11.213000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+12.206000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+12.215000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+12.312000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+12.320000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+13.328000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+13.342000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+13.430000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+13.438000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+14.431000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+14.440000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+14.533000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+14.541000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+15.534000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+15.550000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+15.640000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+15.648000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+16.656000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+16.665000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+16.758000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+16.766000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+17.759000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+17.774000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+17.861000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+17.870000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+18.862000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+18.877000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+18.968000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+18.976000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+19.984000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+19.999000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+20.016000 Battery voltage: 4.051758 V
+└─ app::app::battery_measurement::{async_fn#0} @ src/bin/app.rs:152
+20.086000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+20.094000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+21.087000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+21.096000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+21.189000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+21.197000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+22.190000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+22.199000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+22.296000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+22.304000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+23.312000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+23.327000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+23.414000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+23.422000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+24.415000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+24.424000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+24.517000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+24.525000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+25.518000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+25.531000 Received 22 bytes: [13, 10, 43, 85, 83, 79, 87, 82, 58, 32, 48, 44, 49, 50, 13, 10, 13, 10, 79, 75, 13, 10]
+
++USOWR: 0,12
+
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+25.624000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+25.632000 Received 24 bytes: [13, 13, 10, 13, 13, 10, 43, 85, 83, 79, 82, 68, 58, 32, 48, 44, 50, 48, 13, 10, 79, 75, 13, 10]
+
+
++USORD: 0,20
+OK
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+26.264000 Received 14 bytes: [13, 10, 43, 85, 85, 83, 79, 67, 76, 58, 32, 48, 13, 10]
+
++UUSOCL: 0
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+26.640000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+26.650000 Received 39 bytes: [13, 10, 43, 67, 77, 69, 32, 69, 82, 82, 79, 82, 58, 32, 79, 112, 101, 114, 97, 116, 105, 111, 110, 32, 110, 111, 116, 32, 97, 108, 108, 111, 119, 101, 100, 13, 10, 13, 10]
+
++CME ERROR: Operation not allowed
+
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+26.742000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+26.751000 Received 39 bytes: [13, 10, 43, 67, 77, 69, 32, 69, 82, 82, 79, 82, 58, 32, 79, 112, 101, 114, 97, 116, 105, 111, 110, 32, 110, 111, 116, 32, 97, 108, 108, 111, 119, 101, 100, 13, 10, 13, 10]
+
++CME ERROR: Operation not allowed
+
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+27.743000 Sending: AT+USOWR=0,12,"Hello world!"
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:226
+27.761000 Received 39 bytes: [13, 10, 43, 67, 77, 69, 32, 69, 82, 82, 79, 82, 58, 32, 79, 112, 101, 114, 97, 116, 105, 111, 110, 32, 110, 111, 116, 32, 97, 108, 108, 111, 119, 101, 100, 13, 10, 13, 10]
+
++CME ERROR: Operation not allowed
+
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
+27.845000 Sending: AT+USORD=0,0
+└─ app::app::modem_talker::{async_fn#0} @ src/bin/app.rs:233
+27.854000 Received 39 bytes: [13, 10, 43, 67, 77, 69, 32, 69, 82, 82, 79, 82, 58, 32, 79, 112, 101, 114, 97, 116, 105, 111, 110, 32, 110, 111, 116, 32, 97, 108, 108, 111, 119, 101, 100, 13, 10, 13, 10]
+
++CME ERROR: Operation not allowed
+
+
+└─ app::app::modem_listener::{async_fn#0} @ src/bin/app.rs:247
