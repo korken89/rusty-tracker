@@ -122,6 +122,8 @@ mod app {
         core::mem::forget(reset);
 
         let lte_on = Input::new(p.P0_04, Pull::None);
+
+        // LTE Power needs to be open drain
         let lte_pwr = Output::new(p.P0_08, Level::High, OutputDrive::Standard0Disconnect1);
 
         defmt::info!("uarte initialized!");
@@ -202,12 +204,12 @@ mod app {
         // tx.write(b"AT+UPSD=0\r\n").await.unwrap(); // IMEI
         // Systick::delay(100.millis()).await;
 
-        // defmt::println!("Sending request");
-        // tx.write(b"AT+UDNSRN=0,\"korken89.duckdns.org\"\r\n")
-        //     .await
-        //     .unwrap(); // IMEI
+        defmt::println!("Sending DNS");
+        tx.write(b"AT+UDNSRN=0,\"one.one.one.one\"\r\n")
+            .await
+            .unwrap(); // IMEI
 
-        // Systick::delay(3000.millis()).await;
+        Systick::delay(3000.millis()).await;
 
         // // tx.write(b"AT+CSQ?\r\n").await.unwrap(); // IMEI
         // tx.write(b"AT+UCFSCAN=7\r\n").await.unwrap(); // IMEI
