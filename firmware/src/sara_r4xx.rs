@@ -120,7 +120,22 @@ pub enum ModemInitError {
     FailedToPowerUp,
     InitializationFailed,
     ResponseNotUtf,
+    ResponseNotNumber,
     ResponseTooShort,
+}
+
+fn parse_u64(s: &str) -> Result<u64, ()> {
+    let mut result = 0;
+
+    for digit in s.chars() {
+        if digit >= '0' && digit <= '9' {
+            result = 10 * result + digit as u64 - '0' as u64;
+        } else {
+            return Err(());
+        }
+    }
+
+    Ok(result)
 }
 
 impl Modem {
@@ -196,33 +211,34 @@ impl Modem {
         Self::early_command(&mut at_interface, "AT+CFUN=0\r\n", rx_buf).await?;
 
         // Read IMSI
-        let imsi = Self::early_command(&mut at_interface, "AT+CIMI\r\n", rx_buf).await?;
-
-        // TODO: Extract IMSI
+        let imsi = parse_u64(Self::early_command(&mut at_interface, "AT+CIMI\r\n", rx_buf).await?)
+            .map_err(|_| ModemInitError::ResponseNotNumber)?;
 
         // Read IMEI
-        let imei = Self::early_command(&mut at_interface, "AT+CGSN\r\n", rx_buf).await?;
-
-        // TODO: Extract IMEI
+        let imei = parse_u64(Self::early_command(&mut at_interface, "AT+CGSN\r\n", rx_buf).await?)
+            .map_err(|_| ModemInitError::ResponseNotNumber)?;
 
         // Read module name
         let model = String::from(Self::early_command(&mut at_interface, "ATI\r\n", rx_buf).await?);
 
         // Read versions
-        let versions = Self::early_command(&mut at_interface, "ATI9\r\n", rx_buf).await?;
+        let (modem_version, app_version) =
+            Self::early_command(&mut at_interface, "ATI9\r\n", rx_buf)
+                .await?
+                .split_once(',')
+                .ok_or(ModemInitError::ResponseTooShort)?;
+        let modem_version = String::from(modem_version);
+        let application_version = String::from(app_version);
 
-        // TODO: Extract versions
-
-        // TODO: Fill system info
         let system_info = SystemInfo {
-            imsi: 0x0,
-            imei: 0x1,
+            imsi,
+            imei,
             model,
-            modem_version: String::new(),
-            application_version: String::new(),
+            modem_version,
+            application_version,
         };
 
-        // Into normal functionality
+        // Back to normal functionality
         Self::early_command(&mut at_interface, "AT+CFUN=1\r\n", rx_buf).await?;
 
         // Create the communication channels
