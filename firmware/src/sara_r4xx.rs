@@ -24,7 +24,7 @@ use atomic_polyfill::{AtomicU8, Ordering};
 use heapless::String;
 use no_std_net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use rtic_common::waker_registration::CriticalSectionWakerRegistration;
-use rtic_sync::arbiter::Arbiter;
+use rtic_sync::arbiter::{Arbiter, ExclusiveAccess};
 
 use crate::ssq::{self, SingleSlotQueue};
 
@@ -218,7 +218,7 @@ impl Modem {
     }
 
     /// DNS Lookup a hostname or address.
-    pub async fn dns_lookup(hostname: &'static str) -> Result<IpAddr, ()> {
+    pub async fn dns_lookup(hostname: &'static str) -> Result<heapless::Vec<IpAddr, 3>, ()> {
         if !Self::is_initialized() {
             return Err(());
         }
@@ -241,6 +241,9 @@ pub struct Socket {
 impl Socket {
     /// Connect to an address and port.
     pub async fn connect(self, addr: SocketAddr) -> Result<Connection, ()> {
+        // SAFETY: The `MaybeUninit` is initialized, it's the only way to get the `Socket` type.
+        let modem = unsafe { MODEM_STATE.access().await.assume_init_mut() };
+
         todo!()
     }
 
@@ -275,21 +278,37 @@ static SOCKET_WAKERS: [CriticalSectionWakerRegistration; 7] = [NEW_WAKER; 7];
 impl Connection {
     /// Returns the number of bytes available for reading.
     pub async fn bytes_available(&mut self) -> Result<usize, ConnectionError> {
+        // SAFETY: The `MaybeUninit` is initialized, it's the only way to get the `Connection` type.
+        let modem = unsafe { MODEM_STATE.access().await.assume_init_mut() };
+
+        modem.
+
         todo!()
     }
 
     /// Reads from the socket, waiting until at least 1 bytes is available.
     pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize, ConnectionError> {
+        // SAFETY: The `MaybeUninit` is initialized, it's the only way to get the `Connection` type.
+        let modem = unsafe { MODEM_STATE.access().await.assume_init_mut() };
+
+        let _ = buf;
         todo!()
     }
 
     /// Writes to the socket, waiting until all bytes are sent.
     pub async fn write(&mut self, buf: &[u8]) -> Result<(), ConnectionError> {
+        // SAFETY: The `MaybeUninit` is initialized, it's the only way to get the `Connection` type.
+        let modem = unsafe { MODEM_STATE.access().await.assume_init_mut() };
+
+        let _ = buf;
         todo!()
     }
 
     /// Close the connection, returning the socket.
     pub async fn close(self) -> Socket {
+        // SAFETY: The `MaybeUninit` is initialized, it's the only way to get the `Connection` type.
+        let modem = unsafe { MODEM_STATE.access().await.assume_init_mut() };
+
         todo!()
     }
 }

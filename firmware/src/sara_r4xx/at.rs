@@ -1,7 +1,10 @@
 use crate::ssq;
 use core::{cell::RefCell, pin::pin};
 use futures::future::select;
-use heapless::String;
+use heapless::{String, Vec};
+use no_std_net::{IpAddr, SocketAddr};
+
+use super::Protocol;
 
 pub trait AsyncWriter {
     /// Write data.
@@ -13,10 +16,54 @@ pub trait AsyncReadUntilIdle {
     async fn read_until_idle(&mut self, buf: &mut [u8]) -> usize;
 }
 
+// tx.write(b"ATI\r\n").await.unwrap(); // Module name
+
+// tx.write(b"AT+CIMI\r\n").await.unwrap(); // IMSI
+
+// tx.write(b"AT+CGSN\r\n").await.unwrap(); // IMEI
+
+// tx.write(b"AT+UPSD=0,1,\"iot.1nce.net\"\r\n").await.unwrap(); // IMEI
+
+// tx.write(b"AT+UDNSRN=0,\"one.one.one.one\"\r\n").await.unwrap(); // DNS
+
+// tx.write(b"AT+USOCR=6\r\n").await.unwrap();
+
+// tx.write(b"AT+USOCO=0,\"79.136.27.216\",5684\r\n").await.unwrap();
+
+// tx.write(b"AT+USOWR=0,12,\"Hello world!\"\r\n").await.unwrap();
+
+// tx.write(b"AT+USORD=0,0\r\n").await.unwrap(); // Num bytes in socket
+
 // TODO: Needs to be able to be parsed into an AT command string using `at_command`
-#[derive(Debug, defmt::Format, Clone)]
+#[derive(Debug, defmt::Format)]
 pub enum Command {
-    ToDo,
+    ReadModuleName, // ATI0
+    ReadVersions,   // ATI9
+    ReadImsi,       // CIMI
+    ReadImei,       // CGSN
+    SetApn {
+        apd: &'static str,
+    }, // UPSD
+    DnsLookup {
+        host: &'static str,
+    }, // UDNSRN
+    ConnectSocket {
+        socket_id: u8,
+        socket_type: Protocol,
+        #[defmt(Debug2Format)]
+        addr: SocketAddr,
+    }, // USOCO
+    SendData {
+        socket_id: u8,
+        data: &'static [u8], // TODO: Some other way
+    }, // USOWR
+    ReadData {
+        socket_id: u8,
+        data: &'static mut [u8], // TODO: Some other way
+    }, // USORD
+    DataAvailable {
+        socket_id: u8,
+    }, // USORD=X,0
 }
 
 impl Command {
@@ -37,7 +84,16 @@ impl Command {
 // Used in the TX/RX worker to hint from TX to RX what response is expected.
 #[derive(Debug, defmt::Format, Copy, Clone, PartialEq, Eq)]
 enum CommandHint {
-    ToDo,
+    ReadModuleName,
+    ReadVersions,
+    ReadImsi,
+    ReadImei,
+    SetApn,
+    DnsLookup,
+    ConnectSocket,
+    SendData,
+    ReadData,
+    DataAvailable,
 }
 
 impl CommandHint {
@@ -56,7 +112,38 @@ impl CommandHint {
 // TODO: Needs to be able to be parsed from an AT command string using `at_command`
 #[derive(Debug, defmt::Format, Clone)]
 pub enum Response {
-    ToDo,
+    ReadModuleName {
+        name: String<32>,
+    },
+    ReadVersions {
+        modem_version: String<16>,
+        application_version: String<16>,
+    },
+    ReadImsi {
+        imsi: u64,
+    },
+    ReadImei {
+        imei: u64,
+    },
+    SetApn {
+        success: bool,
+    },
+    DnsLookup {
+        #[defmt(Debug2Format)]
+        ips: Vec<IpAddr, 3>,
+    },
+    ConnectSocket {
+        success: bool,
+    },
+    SendData {
+        success: bool,
+    },
+    ReadData {
+        success: bool,
+    },
+    DataAvailable {
+        num_bytes: usize,
+    },
 }
 
 impl Response {
