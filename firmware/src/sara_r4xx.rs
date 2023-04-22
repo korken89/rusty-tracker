@@ -152,18 +152,13 @@ impl Modem {
         let len = rxtx.0.read_until_idle(buf).await;
 
         if buf[..len].ends_with(b"\r\nOK\r\n") {
-            if len == 6 {
-                Ok("")
-            } else if len >= 10 {
-                // Strip leading `\r\n` and trailing `\r\n\r\nOK\r\n`
-                let s = core::str::from_utf8(&buf[2..len - 8])
-                    .map_err(|_| ModemInitError::ResponseNotUtf)?;
+            // Strip leading `\r\n` and trailing `\r\n\r\nOK\r\n`
+            let s = core::str::from_utf8(&buf[..len - 6])
+                .map_err(|_| ModemInitError::ResponseNotUtf)?
+                .trim();
 
-                defmt::info!("AT <- {}", s);
-                Ok(s)
-            } else {
-                Err(ModemInitError::ResponseTooShort)
-            }
+            defmt::info!("AT <- {}", s);
+            Ok(s)
         } else {
             Err(ModemInitError::InitializationFailed)
         }
