@@ -25,7 +25,7 @@ impl<T> SingleSlotQueue<T> {
         }
     }
 
-    /// Split the queue into producer and comsumer.
+    /// Split the queue into producer and consumer.
     pub fn split<'a>(&'a mut self) -> (Sender<'a, T>, Receiver<'a, T>) {
         (Sender { ssq: self }, Receiver { ssq: self })
     }

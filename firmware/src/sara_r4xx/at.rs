@@ -270,7 +270,7 @@ where
                         // Guaranteed to succeed
                         response_tx.try_send(resp);
 
-                        // Clear command hint, the reponse has been found
+                        // Clear command hint, the response has been found
                         cmd_hint.take();
 
                         // Current assumption: we won't get data so close together so response

@@ -1,4 +1,4 @@
-//! # Abstration layer for the uBlox SARA-R422-M10S 4G modem.
+//! # Abstraction layer for the uBlox SARA-R422-M10S 4G modem.
 //!
 //! The modem has 2 different kinds of messages that can be received by the host:
 //!
@@ -227,6 +227,7 @@ impl Modem {
                 .await?
                 .split_once(',')
                 .ok_or(ModemInitError::ResponseTooShort)?;
+
         let modem_version = String::from(modem_version);
         let application_version = String::from(app_version);
 
