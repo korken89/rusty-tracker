@@ -18,13 +18,12 @@
 //!
 //!
 
+use crate::ssq::{self, SingleSlotQueue};
 use atomic_polyfill::{AtomicU8, Ordering};
 use heapless::String;
-use no_std_net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
+use no_std_net::{IpAddr, SocketAddr};
 use rtic_common::waker_registration::CriticalSectionWakerRegistration;
-use rtic_sync::arbiter::{Arbiter, ExclusiveAccess};
-
-use crate::ssq::{self, SingleSlotQueue};
+use rtic_sync::arbiter::Arbiter;
 
 mod at;
 
@@ -238,6 +237,8 @@ impl Modem {
             modem_version,
             application_version,
         };
+
+        // TODO: Write config
 
         // Back to normal functionality
         Self::early_command(&mut at_interface, "AT+CFUN=1\r\n", rx_buf).await?;
