@@ -34,18 +34,42 @@ pub trait AsyncReadUntilIdle {
 
 // tx.write(b"AT+USORD=0,0\r\n").await.unwrap(); // Num bytes in socket
 
+/// Socket buffer size.
+pub const SOCKET_BUFFER_SIZE: usize = 1024;
+
+/// Buffer used for moving data between modem and communication worker.
+#[derive(Debug, defmt::Format)]
+pub struct StaticBuffer {
+    backing_store: &'static mut [u8; SOCKET_BUFFER_SIZE],
+    len: usize,
+}
+
+impl StaticBuffer {
+    pub fn new(backing_store: &'static mut [u8; SOCKET_BUFFER_SIZE]) -> Self {
+        Self {
+            backing_store,
+            len: 0,
+        }
+    }
+}
+
+// static mut BUF: StaticBuffer = {
+//     static mut B: [u8; SOCKET_BUFFER_SIZE] = [0; SOCKET_BUFFER_SIZE];
+//     StaticBuffer::new(unsafe { &mut B })
+// };
+
 // TODO: Needs to be able to be parsed into an AT command string using `at_command`
 #[derive(Debug, defmt::Format)]
 pub enum Command {
-    ReadModuleName, // ATI0
-    ReadVersions,   // ATI9
-    ReadImsi,       // CIMI
-    ReadImei,       // CGSN
-    SetApn {
-        apd: &'static str,
-    }, // UPSD
+    // ReadModuleName, // ATI0
+    // ReadVersions,   // ATI9
+    // ReadImsi,       // CIMI
+    // ReadImei,       // CGSN
+    // SetApn {
+    //     apd: StaticBuffer,
+    // }, // UPSD
     DnsLookup {
-        host: &'static str,
+        host: StaticBuffer,
     }, // UDNSRN
     ConnectSocket {
         socket_id: u8,
@@ -55,11 +79,11 @@ pub enum Command {
     }, // USOCO
     SendData {
         socket_id: u8,
-        data: &'static [u8], // TODO: Some other way
+        data: StaticBuffer,
     }, // USOWR
     ReadData {
         socket_id: u8,
-        data: &'static mut [u8], // TODO: Some other way
+        data: StaticBuffer,
     }, // USORD
     DataAvailable {
         socket_id: u8,
@@ -75,20 +99,18 @@ impl Command {
     }
 
     fn to_command_hint(&self) -> CommandHint {
-        match self {
-            Command::ToDo => CommandHint::ToDo,
-        }
+        todo!()
     }
 }
 
 // Used in the TX/RX worker to hint from TX to RX what response is expected.
 #[derive(Debug, defmt::Format, Copy, Clone, PartialEq, Eq)]
 enum CommandHint {
-    ReadModuleName,
-    ReadVersions,
-    ReadImsi,
-    ReadImei,
-    SetApn,
+    // ReadModuleName,
+    // ReadVersions,
+    // ReadImsi,
+    // ReadImei,
+    // SetApn,
     DnsLookup,
     ConnectSocket,
     SendData,
@@ -101,45 +123,53 @@ impl CommandHint {
     fn to_hint(&self) -> String<16> {
         let mut s = String::new();
 
-        match self {
-            CommandHint::ToDo => s.push_str("+TODO").ok(),
-        };
+        // match self {
+        //     CommandHint::ToDo => s.push_str("+TODO").ok(),
+        // };
 
         s
+    }
+
+    fn to_timeout_ms(&self) -> u32 {
+        todo!()
     }
 }
 
 // TODO: Needs to be able to be parsed from an AT command string using `at_command`
-#[derive(Debug, defmt::Format, Clone)]
+#[derive(Debug, defmt::Format)]
 pub enum Response {
-    ReadModuleName {
-        name: String<32>,
-    },
-    ReadVersions {
-        modem_version: String<16>,
-        application_version: String<16>,
-    },
-    ReadImsi {
-        imsi: u64,
-    },
-    ReadImei {
-        imei: u64,
-    },
-    SetApn {
-        success: bool,
-    },
+    // ReadModuleName {
+    //     name: String<32>,
+    // },
+    // ReadVersions {
+    //     modem_version: String<16>,
+    //     application_version: String<16>,
+    // },
+    // ReadImsi {
+    //     imsi: u64,
+    // },
+    // ReadImei {
+    //     imei: u64,
+    // },
+    // SetApn {
+    //     success: bool,
+    //     ret: StaticBuffer,
+    // },
     DnsLookup {
         #[defmt(Debug2Format)]
         ips: Vec<IpAddr, 3>,
+        ret: StaticBuffer,
     },
     ConnectSocket {
         success: bool,
     },
     SendData {
         success: bool,
+        ret: StaticBuffer,
     },
     ReadData {
         success: bool,
+        data: StaticBuffer,
     },
     DataAvailable {
         num_bytes: usize,

@@ -18,8 +18,6 @@
 //!
 //!
 
-use core::mem::MaybeUninit;
-
 use atomic_polyfill::{AtomicU8, Ordering};
 use heapless::String;
 use no_std_net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
@@ -28,7 +26,7 @@ use rtic_sync::arbiter::{Arbiter, ExclusiveAccess};
 
 use crate::ssq::{self, SingleSlotQueue};
 
-pub mod at;
+mod at;
 
 /// Configuration for the modem initialization.
 #[derive(Debug, defmt::Format)]
@@ -61,6 +59,7 @@ pub struct Modem {}
 struct ModemState {
     command_tx: ssq::Sender<'static, at::Command>,
     response_rx: ssq::Receiver<'static, at::Response>,
+    socket_buffer: Option<at::StaticBuffer>,
 }
 
 mod consts {
@@ -69,7 +68,7 @@ mod consts {
     pub const MODEM_INITIALIZED: u8 = 2;
 }
 
-static MODEM_STATE: Arbiter<MaybeUninit<ModemState>> = Arbiter::new(MaybeUninit::uninit());
+static MODEM_STATE: Arbiter<Option<ModemState>> = Arbiter::new(None);
 
 // Check so we have not initialized the modem before.
 static MODEM_INITIALIZED: AtomicU8 = AtomicU8::new(consts::MODEM_UNINITIALIZED);
@@ -119,9 +118,43 @@ where
 pub enum ModemInitError {
     AlreadyInitialized,
     FailedToPowerUp,
+    InitializationFailed,
+    ResponseNotUtf,
+    ResponseTooShort,
 }
 
 impl Modem {
+    async fn early_command<'a, RX, TX>(
+        rxtx: &mut (RX, TX),
+        cmd: &str,
+        buf: &'a mut [u8],
+    ) -> Result<&'a str, ModemInitError>
+    where
+        RX: at::AsyncReadUntilIdle,
+        TX: at::AsyncWriter,
+    {
+        defmt::info!("AT -> {}", cmd);
+        rxtx.1.write(cmd.as_bytes()).await;
+        let len = rxtx.0.read_until_idle(buf).await;
+
+        if buf[..len].ends_with(b"\r\nOK\r\n") {
+            if len == 6 {
+                Ok("")
+            } else if len >= 10 {
+                // Strip leading `\r\n` and trailing `\r\n\r\nOK\r\n`
+                let s = core::str::from_utf8(&buf[2..len - 8])
+                    .map_err(|_| ModemInitError::ResponseNotUtf)?;
+
+                defmt::info!("AT <- {}", s);
+                Ok(s)
+            } else {
+                Err(ModemInitError::ResponseTooShort)
+            }
+        } else {
+            Err(ModemInitError::InitializationFailed)
+        }
+    }
+
     /// Initialize the modem according to the configuration.
     ///
     /// Note: This can only be called once.
@@ -138,6 +171,8 @@ impl Modem {
         LteReset: embedded_hal::digital::OutputPin,
         Delay: embedded_hal_async::delay::DelayUs,
     {
+        let rx_buf = &mut [0; 32];
+
         // Mark the driver as under initialization.
         MODEM_INITIALIZED
             .compare_exchange(
@@ -148,26 +183,47 @@ impl Modem {
             )
             .map_err(|_| ModemInitError::AlreadyInitialized)?;
 
-        // Start the modem if it is turned off
-        io_interface.start_modem().await?;
-
         //
         // Start modem
         //
-        at_interface.1.write(b"AT+CFUN=0\r\n").await;
+        io_interface.start_modem().await?;
 
         //
-        // TODO: Initialize modem
+        // Initialize modem
         //
+
+        // Into minimal functionality
+        Self::early_command(&mut at_interface, "AT+CFUN=0\r\n", rx_buf).await?;
+
+        // Read IMSI
+        let imsi = Self::early_command(&mut at_interface, "AT+CIMI\r\n", rx_buf).await?;
+
+        // TODO: Extract IMSI
+
+        // Read IMEI
+        let imei = Self::early_command(&mut at_interface, "AT+CGSN\r\n", rx_buf).await?;
+
+        // TODO: Extract IMEI
+
+        // Read module name
+        let model = String::from(Self::early_command(&mut at_interface, "ATI\r\n", rx_buf).await?);
+
+        // Read versions
+        let versions = Self::early_command(&mut at_interface, "ATI9\r\n", rx_buf).await?;
+
+        // TODO: Extract versions
 
         // TODO: Fill system info
         let system_info = SystemInfo {
             imsi: 0x0,
             imei: 0x1,
-            model: String::new(),
+            model,
             modem_version: String::new(),
             application_version: String::new(),
         };
+
+        // Into normal functionality
+        Self::early_command(&mut at_interface, "AT+CFUN=1\r\n", rx_buf).await?;
 
         // Create the communication channels
         let (command_tx, command_rx) = unsafe {
@@ -180,17 +236,22 @@ impl Modem {
             RESPONSE_Q.split()
         };
 
+        let socket_buffer = unsafe {
+            static mut B: [u8; at::SOCKET_BUFFER_SIZE] = [0; at::SOCKET_BUFFER_SIZE];
+            Some(at::StaticBuffer::new(&mut B))
+        };
+
         let modem_state = ModemState {
             command_tx,
             response_rx,
+            socket_buffer,
         };
 
         {
             // Initialize modem state global
-            MODEM_STATE
+            *MODEM_STATE
                 .try_access()
-                .expect("ICE: Modem state had access before initialization")
-                .write(modem_state);
+                .expect("ICE: Modem state locked before initialization") = Some(modem_state);
         }
 
         // Create communication interface
@@ -241,8 +302,11 @@ pub struct Socket {
 impl Socket {
     /// Connect to an address and port.
     pub async fn connect(self, addr: SocketAddr) -> Result<Connection, ()> {
-        // SAFETY: The `MaybeUninit` is initialized, it's the only way to get the `Socket` type.
-        let modem = unsafe { MODEM_STATE.access().await.assume_init_mut() };
+        let modem = MODEM_STATE
+            .access()
+            .await
+            .as_mut()
+            .expect("ICE: Modem not initialized");
 
         todo!()
     }
@@ -278,27 +342,33 @@ static SOCKET_WAKERS: [CriticalSectionWakerRegistration; 7] = [NEW_WAKER; 7];
 impl Connection {
     /// Returns the number of bytes available for reading.
     pub async fn bytes_available(&mut self) -> Result<usize, ConnectionError> {
-        // SAFETY: The `MaybeUninit` is initialized, it's the only way to get the `Connection` type.
-        let modem = unsafe { MODEM_STATE.access().await.assume_init_mut() };
-
-        modem.
+        let modem = MODEM_STATE
+            .access()
+            .await
+            .as_mut()
+            .expect("ICE: Modem not initialized");
 
         todo!()
     }
 
     /// Reads from the socket, waiting until at least 1 bytes is available.
-    pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize, ConnectionError> {
-        // SAFETY: The `MaybeUninit` is initialized, it's the only way to get the `Connection` type.
-        let modem = unsafe { MODEM_STATE.access().await.assume_init_mut() };
+    pub async fn read(&mut self) -> Result<&[u8], ConnectionError> {
+        let modem = MODEM_STATE
+            .access()
+            .await
+            .as_mut()
+            .expect("ICE: Modem not initialized");
 
-        let _ = buf;
         todo!()
     }
 
     /// Writes to the socket, waiting until all bytes are sent.
     pub async fn write(&mut self, buf: &[u8]) -> Result<(), ConnectionError> {
-        // SAFETY: The `MaybeUninit` is initialized, it's the only way to get the `Connection` type.
-        let modem = unsafe { MODEM_STATE.access().await.assume_init_mut() };
+        let modem = MODEM_STATE
+            .access()
+            .await
+            .as_mut()
+            .expect("ICE: Modem not initialized");
 
         let _ = buf;
         todo!()
@@ -306,8 +376,11 @@ impl Connection {
 
     /// Close the connection, returning the socket.
     pub async fn close(self) -> Socket {
-        // SAFETY: The `MaybeUninit` is initialized, it's the only way to get the `Connection` type.
-        let modem = unsafe { MODEM_STATE.access().await.assume_init_mut() };
+        let modem = MODEM_STATE
+            .access()
+            .await
+            .as_mut()
+            .expect("ICE: Modem not initialized");
 
         todo!()
     }
