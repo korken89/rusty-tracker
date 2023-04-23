@@ -266,16 +266,26 @@ where
         let rx_block = async {
             let rx_buf = &mut [0; 1024];
             loop {
+                // TODO: If we did not get a complete message we need to move the partial buffer,
+                // and continue filling from where we expected more data
+
                 let len = rx.read_until_idle(rx_buf).await;
 
                 if len == 0 {
                     continue;
                 }
 
-                defmt::info!(
-                    "AT[worker] <- {}",
-                    core::str::from_utf8(&rx_buf[..len]).ok()
-                );
+                // Trunkate the rx buffer to the message
+                let mut rx_buf = &rx_buf[..len];
+
+                if let Ok(msg) = core::str::from_utf8(rx_buf) {
+                    defmt::info!("AT[worker] <- {}", msg);
+                } else {
+                    defmt::info!("AT[worker] <- [garbled] {:x}", rx_buf);
+                }
+
+                // TODO: Refactor into something like
+                // handle_command(&cmd_hint, rx_buf)
 
                 // If there is a command hint, we are expecting a response from a command.
                 if let Some(hint) = *cmd_hint.borrow_mut() {
@@ -283,7 +293,7 @@ where
                         // Guaranteed to succeed
                         response_tx
                             .try_send(resp)
-                            .expect("ICE: There was aleady something in the response queue");
+                            .expect("ICE: There was already something in the response queue");
 
                         // Clear command hint, the response has been found
                         cmd_hint.take();
@@ -291,17 +301,24 @@ where
                         // Current assumption: we won't get data so close together so response
                         // and unsolicited will be within the idle timeout
                         if used_len < len {
-                            defmt::error!(
+                            // Trunkate rx_buf for unsolicited parsing
+                            rx_buf = &rx_buf[used_len..];
+
+                            defmt::warn!(
                                 "Unhandled buffer (len = {}) from command '{}': {}",
                                 len - used_len,
                                 hint,
-                                core::str::from_utf8(&rx_buf[len..]).ok()
+                                core::str::from_utf8(rx_buf).ok()
                             );
 
-                            // TODO: If there is data, try to parse unsolicited
+                            // Try to parse unsolicited, fall through to the next block
+                        } else {
+                            // All of the buffer was used, wait for the next message
+                            continue;
                         }
-
-                        continue;
+                    } else {
+                        // TODO: What to do if there is an error in parsing? E.g. we did not yet
+                        // get the full response for some reason.
                     }
                 }
 
