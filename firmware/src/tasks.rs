@@ -4,6 +4,20 @@ use crate::{
 };
 use rtic_monotonics::systick::*;
 
+fn volt_to_rgb(v: f32) -> (f32, f32, f32) {
+    let vmax = 4.2;
+    let vmin = 3.2;
+    let vspan = vmax - vmin;
+
+    let t = (v.min(vmax).max(vmin) - vmin) / vspan;
+
+    if t < 0.5 {
+        (1., t / 0.5, 0.)
+    } else {
+        ((1. - t) / 0.5, 1., 0.)
+    }
+}
+
 pub async fn led_control(
     mut leds: BoardLeds,
     mut voltages: Voltages,
@@ -13,37 +27,37 @@ pub async fn led_control(
         let vbat = voltages.measure_vbat().await;
         let charging_status = charger_status.status();
 
-        defmt::info!("Charging status: {}, Vbat = {} V", charging_status, vbat);
+        let (r, g, b) = volt_to_rgb(vbat);
+
+        defmt::info!(
+            "Charging status: {}, Vbat = {} V, RGB = {}",
+            charging_status,
+            vbat,
+            (r, g, b)
+        );
 
         match charging_status {
             ChargingStatus::No5V => {
-                if vbat < 3.5 {
-                    leds.levels(0.3, 0., 0.);
-                    Systick::delay(10.millis()).await;
+                let s = 0.3;
+                leds.levels(s * r, s * g, s * b);
+                Systick::delay(10.millis()).await;
 
-                    leds.levels(0., 0., 0.);
-                    Systick::delay(5000.millis()).await;
+                leds.levels(0., 0., 0.);
+                Systick::delay(5000.millis()).await;
 
-                    continue;
-                } else {
-                    leds.levels(0., 0., 0.3);
-                    Systick::delay(10.millis()).await;
-
-                    leds.levels(0., 0., 0.);
-                    Systick::delay(5000.millis()).await;
-
-                    continue;
-                }
+                continue;
             }
             ChargingStatus::Standby => leds.levels(0., 0., 0.),
             ChargingStatus::Charging => {
                 for i in 0..100 {
-                    leds.levels(i as f32 / 500., 0., 0.);
+                    let s = i as f32 / 500.;
+                    leds.levels(s * r, s * g, s * b);
                     Systick::delay(2.millis()).await;
                 }
 
                 for i in 0..100 {
-                    leds.levels((100 - i) as f32 / 500., 0., 0.);
+                    let s = (100 - i) as f32 / 500.;
+                    leds.levels(s * r, s * g, s * b);
                     Systick::delay(2.millis()).await;
                 }
 

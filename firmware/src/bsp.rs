@@ -27,9 +27,6 @@ impl BoardLeds {
             self.pwm.set_duty(1, max_duty - green_level as u16);
             self.pwm.set_duty(2, max_duty - blue_level as u16);
         } else {
-            self.pwm.set_duty(0, max_duty);
-            self.pwm.set_duty(1, max_duty);
-            self.pwm.set_duty(2, max_duty);
             self.pwm.disable();
         }
     }
@@ -136,14 +133,12 @@ pub fn init(c: cortex_m::Peripherals) -> (BoardLeds, Voltages, ChargerStatus, Lt
 
     let mut pwm = SimplePwm::new_3ch(p.PWM0, red, green, blue);
 
-    pwm.set_prescaler(Prescaler::Div128);
+    pwm.set_prescaler(Prescaler::Div1);
     pwm.set_max_duty(1000);
 
     pwm.set_duty(0, 1000);
     pwm.set_duty(1, 1000);
     pwm.set_duty(2, 1000);
-
-    pwm.disable();
 
     let leds = BoardLeds { pwm };
 
