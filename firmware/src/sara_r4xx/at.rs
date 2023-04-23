@@ -302,7 +302,9 @@ where
         };
 
         let rx_block = async {
-            let rx_buf = &mut [0; 1024];
+            // The RX buffer needs to be quite large, e.g. a band scan response can be huge.
+            let rx_buf = &mut [0; 4096];
+
             loop {
                 // TODO: If we did not get a complete message we need to move the partial buffer,
                 // and continue filling from where we expected more data
