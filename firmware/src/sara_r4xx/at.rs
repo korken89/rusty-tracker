@@ -92,7 +92,7 @@ pub enum Command {
 
 impl Command {
     /// Converts the command into an AT command string.
-    fn to_at(&self, buf: &mut [u8]) -> Result<usize, ()> {
+    fn to_at(&self, buf: &mut [u8]) -> Result<&[u8], ()> {
         // TODO
 
         Err(())
@@ -177,7 +177,8 @@ pub enum Response {
 }
 
 impl Response {
-    /// Converts the AT string into a response.
+    /// Converts the AT string into a response. Returns the response and how much of the buffer
+    /// that was used.
     fn from_at(buf: &[u8], hint: CommandHint) -> Result<(usize, Response), ()> {
         // TODO
         let hint = hint.to_hint();
@@ -193,7 +194,8 @@ pub enum Unsolicited {
 }
 
 impl Unsolicited {
-    /// Converts the AT string into a unsolicited notification.
+    /// Converts the AT string into a unsolicited notification. Returns the response and how much
+    /// of the buffer that was used.
     fn from_at(buf: &[u8]) -> Result<(usize, Unsolicited), ()> {
         // TODO
 
@@ -241,10 +243,9 @@ where
         } = self;
 
         let cmd_hint: &RefCell<Option<CommandHint>> = &RefCell::new(None);
-        let tx_buf = &mut [0; 1024];
-        let rx_buf = &mut [0; 1024];
 
         let tx_block = async {
+            let tx_buf = &mut [0; 1024];
             loop {
                 let msg = command_rx.receive().await;
 
@@ -252,12 +253,18 @@ where
                 cmd_hint.replace(Some(msg.to_command_hint()));
 
                 // Generate and send the command
-                let len = msg.to_at(tx_buf).expect("Comms worker ICE");
-                tx.write(&tx_buf[..len]).await;
+                let to_send = msg.to_at(tx_buf).expect("ICE: Comms worker");
+                defmt::info!(
+                    "AT[worker] -> {}",
+                    core::str::from_utf8(to_send).expect("ICE: command is not utf8")
+                );
+
+                tx.write(to_send).await;
             }
         };
 
         let rx_block = async {
+            let rx_buf = &mut [0; 1024];
             loop {
                 let len = rx.read_until_idle(rx_buf).await;
 
@@ -265,20 +272,28 @@ where
                     continue;
                 }
 
+                defmt::info!(
+                    "AT[worker] <- {}",
+                    core::str::from_utf8(&rx_buf[..len]).ok()
+                );
+
+                // If there is a command hint, we are expecting a response from a command.
                 if let Some(hint) = *cmd_hint.borrow_mut() {
-                    if let Ok((len, resp)) = Response::from_at(rx_buf, hint) {
+                    if let Ok((used_len, resp)) = Response::from_at(rx_buf, hint) {
                         // Guaranteed to succeed
-                        response_tx.try_send(resp);
+                        response_tx
+                            .try_send(resp)
+                            .expect("ICE: There was aleady something in the response queue");
 
                         // Clear command hint, the response has been found
                         cmd_hint.take();
 
                         // Current assumption: we won't get data so close together so response
                         // and unsolicited will be within the idle timeout
-                        if len > 0 {
+                        if used_len < len {
                             defmt::error!(
                                 "Unhandled buffer (len = {}) from command '{}': {}",
-                                len,
+                                len - used_len,
                                 hint,
                                 core::str::from_utf8(&rx_buf[len..]).ok()
                             );
@@ -291,7 +306,7 @@ where
                 }
 
                 // Check if unsolicited notification
-                if let Ok((len, resp)) = Unsolicited::from_at(rx_buf) {
+                if let Ok((used_len, resp)) = Unsolicited::from_at(rx_buf) {
                     // TODO: Handle unsolicited notifications
 
                     // TODO: On `+UUSORD: <socket>,<length>`, wake the correct socket to make

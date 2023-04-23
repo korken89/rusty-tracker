@@ -138,6 +138,7 @@ fn parse_u64(s: &str) -> Result<u64, ()> {
 }
 
 impl Modem {
+    /// Helper to be used in `init` for sending a command and getting a response.
     async fn early_command<'a, RX, TX>(
         rxtx: &mut (RX, TX),
         cmd: &str,
@@ -147,7 +148,7 @@ impl Modem {
         RX: at::AsyncReadUntilIdle,
         TX: at::AsyncWriter,
     {
-        defmt::info!("AT -> {}", cmd);
+        defmt::info!("AT[init] -> {}", cmd);
         rxtx.1.write(cmd.as_bytes()).await;
         let len = rxtx.0.read_until_idle(buf).await;
 
@@ -157,7 +158,7 @@ impl Modem {
                 .map_err(|_| ModemInitError::ResponseNotUtf)?
                 .trim();
 
-            defmt::info!("AT <- {}", s);
+            defmt::info!("AT[init] <- {}", s);
             Ok(s)
         } else {
             Err(ModemInitError::InitializationFailed)
