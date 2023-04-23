@@ -81,12 +81,16 @@ pub async fn modem_worker(lte_components: LteComponents) -> ! {
         tx,
         rx,
     } = lte_components;
-    let io_control = sara_r4xx::IoControl {
+    let io_interface = sara_r4xx::IoControl {
         pwr_ctrl: lte_pwr,
         v_int: lte_on,
         reset: lte_reset,
         delay: Systick {},
     };
+
+    let config = sara_r4xx::Config { apn: None };
+
+    sara_r4xx::Modem::init(config, (rx, tx), io_interface).await;
 
     loop {
         Systick::delay(500.millis()).await;

@@ -14,7 +14,7 @@ panic-probe = { version = "0.3", features = ["print-defmt"] }
 #defmt-brtt = { git = "https://github.com/datdenkikniet/defmt-brtt.git" }
 
 rtic = { version = "2.0.0-alpha.1", features = ["thumbv7-backend"] }
-rtic-monotonics = { version = "1.0.0-alpha.1", features = ["cortex-m-systick", "nrf52840"] }
+rtic-monotonics = { version = "1.0.0-alpha.2", features = ["cortex-m-systick", "nrf52840", "embedded-hal-async"] }
 rtic-sync = "1.0.0-alpha.0"
 rtic-common = "1.0.0-alpha.0"
 
@@ -22,7 +22,7 @@ at-commands = { version = "0.5.3", features = ["defmt"] }
 heapless = { version = "0.7.16", features = ["defmt-impl"] }
 futures = { version = "0.3", default-features = false, features = ["async-await"] }
 
-embassy-nrf = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "nrf52840", "time-driver-rtc1", "gpiote", "unstable-pac", "time"] }
+embassy-nrf = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "nrf52840", "time-driver-rtc1", "gpiote", "unstable-pac", "time", "unstable-traits"] }
 embassy-usb = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "msos-descriptor"] }
 
 no-std-net = "0.6.0"
