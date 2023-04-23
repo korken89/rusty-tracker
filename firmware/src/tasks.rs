@@ -1,4 +1,7 @@
-use crate::bsp::{BoardLeds, ChargerStatus, ChargingStatus, Voltages};
+use crate::{
+    bsp::{BoardLeds, ChargerStatus, ChargingStatus, LteComponents, Voltages},
+    sara_r4xx,
+};
 use rtic_monotonics::systick::*;
 
 pub async fn led_control(
@@ -7,7 +10,7 @@ pub async fn led_control(
     charger_status: ChargerStatus,
 ) -> ! {
     loop {
-        let vbat = voltages.measure_vbat();
+        let vbat = voltages.measure_vbat().await;
         let charging_status = charger_status.status();
 
         defmt::info!("Charging status: {}, Vbat = {} V", charging_status, vbat);
@@ -15,43 +18,63 @@ pub async fn led_control(
         match charging_status {
             ChargingStatus::No5V => {
                 if vbat < 3.5 {
-                    leds.levels(1.0, 0.);
+                    leds.levels(0.3, 0., 0.);
                     Systick::delay(10.millis()).await;
 
-                    leds.levels(0., 0.);
+                    leds.levels(0., 0., 0.);
                     Systick::delay(5000.millis()).await;
 
                     continue;
                 } else {
-                    leds.levels(0., 1.);
+                    leds.levels(0., 0., 0.3);
                     Systick::delay(10.millis()).await;
 
-                    leds.levels(0., 0.);
+                    leds.levels(0., 0., 0.);
                     Systick::delay(5000.millis()).await;
 
                     continue;
                 }
             }
-            ChargingStatus::Standby => leds.levels(0., 0.),
+            ChargingStatus::Standby => leds.levels(0., 0., 0.),
             ChargingStatus::Charging => {
                 for i in 0..100 {
-                    leds.levels(i as f32 / 500., 0.);
+                    leds.levels(i as f32 / 500., 0., 0.);
                     Systick::delay(2.millis()).await;
                 }
 
                 for i in 0..100 {
-                    leds.levels((100 - i) as f32 / 500., 0.);
+                    leds.levels((100 - i) as f32 / 500., 0., 0.);
                     Systick::delay(2.millis()).await;
                 }
 
-                leds.levels(0., 0.);
+                leds.levels(0., 0., 0.);
                 Systick::delay(200.millis()).await;
 
                 continue;
             }
-            ChargingStatus::ChargeComplete => leds.levels(0.0, 0.1),
+            ChargingStatus::ChargeComplete => leds.levels(0.0, 0.1, 0.),
         }
 
+        Systick::delay(500.millis()).await;
+    }
+}
+
+pub async fn modem_worker(lte_components: LteComponents) -> ! {
+    let LteComponents {
+        lte_on,
+        lte_pwr,
+        lte_reset,
+        tx,
+        rx,
+    } = lte_components;
+    let io_control = sara_r4xx::IoControl {
+        pwr_ctrl: lte_pwr,
+        v_int: lte_on,
+        reset: lte_reset,
+        delay: Systick {},
+    };
+
+    loop {
         Systick::delay(500.millis()).await;
     }
 }

@@ -176,30 +176,30 @@ pub enum Response {
     },
 }
 
-#[derive(Debug, defmt::Format, Copy, Clone, PartialEq, Eq)]
-enum FindSubsequence {
-    /// The needle was not found.
-    NotFound,
-    /// The needle is inside the haystack and starts at this position.
-    Inside(usize),
-    /// The haystack ends with the needle.
-    EndsWith,
-}
-
-fn find_subsequence(haystack: &[u8], needle: &[u8]) -> FindSubsequence {
-    if let Some(pos) = haystack
-        .windows(needle.len())
-        .position(|window| window == needle)
-    {
-        if pos == haystack.len() - needle.len() {
-            FindSubsequence::EndsWith
-        } else {
-            FindSubsequence::Inside(pos)
-        }
-    } else {
-        FindSubsequence::NotFound
-    }
-}
+// #[derive(Debug, defmt::Format, Copy, Clone, PartialEq, Eq)]
+// enum FindSubsequence {
+//     /// The needle was not found.
+//     NotFound,
+//     /// The needle is inside the haystack and starts at this position.
+//     Inside(usize),
+//     /// The haystack ends with the needle.
+//     EndsWith,
+// }
+//
+// fn find_subsequence(haystack: &[u8], needle: &[u8]) -> FindSubsequence {
+//     if let Some(pos) = haystack
+//         .windows(needle.len())
+//         .position(|window| window == needle)
+//     {
+//         if pos == haystack.len() - needle.len() {
+//             FindSubsequence::EndsWith
+//         } else {
+//             FindSubsequence::Inside(pos)
+//         }
+//     } else {
+//         FindSubsequence::NotFound
+//     }
+// }
 
 impl Response {
     /// Converts the AT string into a response. Returns the response and how much of the buffer

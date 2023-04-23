@@ -205,6 +205,8 @@ impl Modem {
         // Into minimal functionality
         Self::early_command(&mut at_interface, "AT+CFUN=0\r\n", rx_buf).await?;
 
+        // TODO: Close all sockets (if some is open from last run)
+
         // Read IMSI
         let imsi = parse_u64(Self::early_command(&mut at_interface, "AT+CIMI\r\n", rx_buf).await?)
             .map_err(|_| ModemInitError::ResponseNotNumber)?;
