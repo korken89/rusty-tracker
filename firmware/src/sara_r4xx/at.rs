@@ -176,10 +176,44 @@ pub enum Response {
     },
 }
 
+#[derive(Debug, defmt::Format, Copy, Clone, PartialEq, Eq)]
+enum FindSubsequence {
+    /// The needle was not found.
+    NotFound,
+    /// The needle is inside the haystack and starts at this position.
+    Inside(usize),
+    /// The haystack ends with the needle.
+    EndsWith,
+}
+
+fn find_subsequence(haystack: &[u8], needle: &[u8]) -> FindSubsequence {
+    if let Some(pos) = haystack
+        .windows(needle.len())
+        .position(|window| window == needle)
+    {
+        if pos == haystack.len() - needle.len() {
+            FindSubsequence::EndsWith
+        } else {
+            FindSubsequence::Inside(pos)
+        }
+    } else {
+        FindSubsequence::NotFound
+    }
+}
+
 impl Response {
     /// Converts the AT string into a response. Returns the response and how much of the buffer
     /// that was used.
     fn from_at(buf: &[u8], hint: CommandHint) -> Result<(usize, Response), ()> {
+        // TODO: Is this overkill?
+        // if find_subsequence(buf, b"\r\nOK\r\n") {
+        //     // There is a complete command in the buffer
+        // }
+        // VS this:
+        if buf.ends_with(b"\r\nOK\r\n") {
+            // There is a complete command in the buffer
+        }
+
         // TODO
         let hint = hint.to_hint();
 
@@ -244,6 +278,8 @@ where
 
         let cmd_hint: &RefCell<Option<CommandHint>> = &RefCell::new(None);
 
+        // TODO: Refactor the RX and TX block into methods
+
         let tx_block = async {
             let tx_buf = &mut [0; 1024];
             loop {
@@ -254,10 +290,12 @@ where
 
                 // Generate and send the command
                 let to_send = msg.to_at(tx_buf).expect("ICE: Comms worker");
-                defmt::info!(
-                    "AT[worker] -> {}",
-                    core::str::from_utf8(to_send).expect("ICE: command is not utf8")
-                );
+
+                if let Ok(msg) = core::str::from_utf8(to_send) {
+                    defmt::info!("AT[worker] -> {}", msg);
+                } else {
+                    defmt::info!("AT[worker] -> [garbled] {:x}", to_send);
+                }
 
                 tx.write(to_send).await;
             }
@@ -299,7 +337,7 @@ where
                         cmd_hint.take();
 
                         // Current assumption: we won't get data so close together so response
-                        // and unsolicited will be within the idle timeout
+                        // and unsolicited will be within the idle timeout.
                         if used_len < len {
                             // Trunkate rx_buf for unsolicited parsing
                             rx_buf = &rx_buf[used_len..];
@@ -318,9 +356,14 @@ where
                         }
                     } else {
                         // TODO: What to do if there is an error in parsing? E.g. we did not yet
-                        // get the full response for some reason.
+                        // get the full response for some reason. This commonly happens for
+                        // commands that need some time to finish, e.g. a band-scan and DNS
+                        // (easy to test with one.one.one.one where responses come 100 ms appart).
                     }
                 }
+
+                // TODO: Refactor into something like
+                // handle_notification(rx_buf)
 
                 // Check if unsolicited notification
                 if let Ok((used_len, resp)) = Unsolicited::from_at(rx_buf) {
