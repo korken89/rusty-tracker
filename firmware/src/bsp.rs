@@ -194,7 +194,7 @@ pub fn init(c: cortex_m::Peripherals) -> (BoardLeds, Voltages, ChargerStatus, Lt
 
     let systick_token = rtic_monotonics::create_systick_token!();
     Systick::start(c.SYST, 64_000_000, systick_token);
-    defmt::println!("init done");
+    defmt::info!("init done");
 
     (leds, voltages, charger_status, lte_components)
 }

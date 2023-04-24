@@ -95,14 +95,14 @@ where
 {
     async fn start_modem(&mut self) -> Result<(), ModemInitError> {
         for i in 0..10 {
-            defmt::println!("Trying to start LTE modem (try {})", i);
+            defmt::info!("Trying to start LTE modem (try {})", i);
             self.pwr_ctrl.set_low().ok();
             self.delay.delay_ms(500).await;
             self.pwr_ctrl.set_high().ok();
 
             for _ in 0..10 {
                 if matches!(self.v_int.is_high(), Ok(true)) {
-                    defmt::println!("LTE modem started!");
+                    defmt::info!("LTE modem started!");
                     return Ok(());
                 }
                 self.delay.delay_ms(500).await;

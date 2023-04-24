@@ -40,7 +40,7 @@ pub async fn led_control(
             ChargingStatus::No5V => {
                 let s = 0.3;
                 leds.levels(s * r, s * g, s * b);
-                Systick::delay(10.millis()).await;
+                Systick::delay(5.millis()).await;
 
                 leds.levels(0., 0., 0.);
                 Systick::delay(5000.millis()).await;
@@ -90,7 +90,7 @@ pub async fn modem_worker(lte_components: LteComponents) -> ! {
 
     let config = sara_r4xx::Config { apn: None };
 
-    sara_r4xx::Modem::init(config, (rx, tx), io_interface).await;
+    // sara_r4xx::Modem::init(config, (rx, tx), io_interface).await;
 
     loop {
         Systick::delay(500.millis()).await;

@@ -32,7 +32,7 @@ mod app {
 
     #[init]
     fn init(cx: init::Context) -> (Shared, Local) {
-        defmt::println!("pre init");
+        defmt::info!("pre init");
 
         let (leds, voltages, charger_status, lte_components) = rusty_tracker::bsp::init(cx.core);
 
