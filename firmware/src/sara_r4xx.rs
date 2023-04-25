@@ -149,7 +149,7 @@ impl Modem {
         RX: at::AsyncReadUntilIdle,
         TX: at::AsyncWriter,
     {
-        defmt::debug!("AT[init] -> {}", cmd);
+        defmt::debug!("AT[init] -> {}", cmd.trim());
         rxtx.1.write(cmd.as_bytes()).await;
         let len = rxtx.0.read_until_idle(buf).await;
 
@@ -160,8 +160,13 @@ impl Modem {
                 .trim();
 
             defmt::debug!("AT[init] <- {} [OK]", s);
+
             Ok(s)
         } else {
+            let s = core::str::from_utf8(&buf)
+                .map_err(|_| ModemInitError::ResponseNotUtf)?
+                .trim();
+            defmt::debug!("AT[init] <- {} [ERR]", s);
             Err(ModemInitError::InitializationFailed)
         }
     }
@@ -182,7 +187,7 @@ impl Modem {
         LteReset: embedded_hal::digital::OutputPin,
         Delay: embedded_hal_async::delay::DelayUs,
     {
-        let rx_buf = &mut [0; 32];
+        let rx_buf = &mut [0; 1024];
 
         // Mark the driver as under initialization.
         MODEM_INITIALIZED
@@ -210,7 +215,28 @@ impl Modem {
         // Into minimal functionality
         Self::early_command(&mut at_interface, "AT+CFUN=0\r\n", rx_buf).await?;
 
-        // TODO: Close all sockets (if some is open from last run)
+        // Close all sockets (if some is open from last run), TODO: Check that this actually works
+        Self::early_command(&mut at_interface, "AT+USOCL=0\r\n", rx_buf)
+            .await
+            .ok();
+        Self::early_command(&mut at_interface, "AT+USOCL=1\r\n", rx_buf)
+            .await
+            .ok();
+        Self::early_command(&mut at_interface, "AT+USOCL=2\r\n", rx_buf)
+            .await
+            .ok();
+        Self::early_command(&mut at_interface, "AT+USOCL=3\r\n", rx_buf)
+            .await
+            .ok();
+        Self::early_command(&mut at_interface, "AT+USOCL=4\r\n", rx_buf)
+            .await
+            .ok();
+        Self::early_command(&mut at_interface, "AT+USOCL=5\r\n", rx_buf)
+            .await
+            .ok();
+        Self::early_command(&mut at_interface, "AT+USOCL=6\r\n", rx_buf)
+            .await
+            .ok();
 
         // Read IMSI
         let imsi = parse_u64(Self::early_command(&mut at_interface, "AT+CIMI\r\n", rx_buf).await?)
