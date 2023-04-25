@@ -6,7 +6,7 @@ use rtic_monotonics::systick::*;
 
 fn volt_to_rgb(v: f32) -> (f32, f32, f32) {
     let vmax = 4.2;
-    let vmin = 3.2;
+    let vmin = 3.5;
     let vspan = vmax - vmin;
 
     let t = (v.min(vmax).max(vmin) - vmin) / vspan;
@@ -40,7 +40,7 @@ pub async fn led_control(
             ChargingStatus::No5V => {
                 let s = 0.3;
                 leds.levels(s * r, s * g, s * b);
-                Systick::delay(5.millis()).await;
+                Systick::delay(15.millis()).await;
 
                 leds.levels(0., 0., 0.);
                 Systick::delay(5000.millis()).await;
@@ -74,23 +74,30 @@ pub async fn led_control(
 }
 
 pub async fn modem_worker(lte_components: LteComponents) -> ! {
+    // Get the interface to the modem
     let LteComponents {
-        lte_on,
-        lte_pwr,
-        lte_reset,
+        io_interface,
         tx,
         rx,
     } = lte_components;
-    let io_interface = sara_r4xx::IoControl {
-        pwr_ctrl: lte_pwr,
-        v_int: lte_on,
-        reset: lte_reset,
-        delay: Systick {},
-    };
 
+    // Modem configuration
     let config = sara_r4xx::Config { apn: None };
 
-    // sara_r4xx::Modem::init(config, (rx, tx), io_interface).await;
+    // Initialize the modem
+    let r = sara_r4xx::Modem::init(config, (rx, tx), io_interface).await;
+
+    match r {
+        Ok((info, mut comms)) => {
+            defmt::info!("Modem init complete, info: {}", info);
+
+            // Start communication worker, this should never return
+            comms.communication_worker().await;
+
+            defmt::error!("Modem comms worker returned?!");
+        }
+        Err(e) => defmt::error!("Modem init failed with error: {}", e),
+    }
 
     loop {
         Systick::delay(500.millis()).await;

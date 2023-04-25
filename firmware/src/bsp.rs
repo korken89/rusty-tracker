@@ -9,6 +9,8 @@ use embassy_nrf::{
 };
 use rtic_monotonics::systick::Systick;
 
+use crate::sara_r4xx::{AsyncReadUntilIdle, AsyncWriter, IoControl};
+
 pub struct BoardLeds {
     pwm: SimplePwm<'static, PWM0>,
 }
@@ -85,12 +87,31 @@ impl ChargerStatus {
     }
 }
 
-pub struct LteComponents {
-    pub lte_on: Input<'static, P0_04>,
-    pub lte_pwr: Output<'static, P0_08>,
-    pub lte_reset: Output<'static, P0_11>,
+pub struct UTx {
     pub tx: UarteTx<'static, UARTE0>,
+}
+
+impl AsyncWriter for UTx {
+    async fn write(&mut self, buf: &[u8]) {
+        self.tx.write(buf).await.expect("ICE: Write")
+    }
+}
+
+pub struct URx {
     pub rx: UarteRxWithIdle<'static, UARTE0, TIMER0>,
+}
+
+impl AsyncReadUntilIdle for URx {
+    async fn read_until_idle(&mut self, buf: &mut [u8]) -> usize {
+        self.rx.read_until_idle(buf).await.expect("ICE: Read")
+    }
+}
+
+pub struct LteComponents {
+    pub io_interface:
+        IoControl<Output<'static, P0_08>, Input<'static, P0_04>, Output<'static, P0_11>, Systick>,
+    pub tx: UTx,
+    pub rx: URx,
 }
 
 bind_interrupts!(struct Irqs {
@@ -178,12 +199,16 @@ pub fn init(c: cortex_m::Peripherals) -> (BoardLeds, Voltages, ChargerStatus, Lt
     // LTE Power needs to be open drain
     let lte_pwr = Output::new(p.P0_08, Level::High, OutputDrive::Standard0Disconnect1);
 
+    let io_interface = IoControl {
+        pwr_ctrl: lte_pwr,
+        v_int: lte_on,
+        reset: lte_reset,
+        delay: Systick {},
+    };
     let lte_components = LteComponents {
-        lte_on,
-        lte_pwr,
-        lte_reset,
-        tx,
-        rx,
+        io_interface,
+        tx: UTx { tx },
+        rx: URx { rx },
     };
 
     defmt::info!("uarte initialized!");

@@ -19,6 +19,7 @@
 //!
 
 use crate::ssq::{self, SingleSlotQueue};
+pub use at::{AsyncReadUntilIdle, AsyncWriter};
 use atomic_polyfill::{AtomicU8, Ordering};
 use heapless::String;
 use no_std_net::{IpAddr, SocketAddr};
@@ -95,14 +96,14 @@ where
 {
     async fn start_modem(&mut self) -> Result<(), ModemInitError> {
         for i in 0..10 {
-            defmt::info!("Trying to start LTE modem (try {})", i);
+            defmt::debug!("Trying to start LTE modem (try {})", i);
             self.pwr_ctrl.set_low().ok();
             self.delay.delay_ms(500).await;
             self.pwr_ctrl.set_high().ok();
 
             for _ in 0..10 {
                 if matches!(self.v_int.is_high(), Ok(true)) {
-                    defmt::info!("LTE modem started!");
+                    defmt::debug!("LTE modem started!");
                     return Ok(());
                 }
                 self.delay.delay_ms(500).await;
@@ -148,7 +149,7 @@ impl Modem {
         RX: at::AsyncReadUntilIdle,
         TX: at::AsyncWriter,
     {
-        defmt::info!("AT[init] -> {}", cmd);
+        defmt::debug!("AT[init] -> {}", cmd);
         rxtx.1.write(cmd.as_bytes()).await;
         let len = rxtx.0.read_until_idle(buf).await;
 
@@ -158,7 +159,7 @@ impl Modem {
                 .map_err(|_| ModemInitError::ResponseNotUtf)?
                 .trim();
 
-            defmt::info!("AT[init] <- {}", s);
+            defmt::debug!("AT[init] <- {} [OK]", s);
             Ok(s)
         } else {
             Err(ModemInitError::InitializationFailed)
@@ -193,6 +194,8 @@ impl Modem {
             )
             .map_err(|_| ModemInitError::AlreadyInitialized)?;
 
+        defmt::debug!("Modem: starting modem");
+
         //
         // Start modem
         //
@@ -201,6 +204,8 @@ impl Modem {
         //
         // Initialize modem
         //
+
+        defmt::debug!("Modem: initializing");
 
         // Into minimal functionality
         Self::early_command(&mut at_interface, "AT+CFUN=0\r\n", rx_buf).await?;
