@@ -68,6 +68,7 @@ pub enum Command {
     // SetApn {
     //     apd: StaticBuffer,
     // }, // UPSD
+    AllocateSocket,
     DnsLookup {
         host: StaticBuffer,
     }, // UDNSRN
@@ -93,13 +94,31 @@ pub enum Command {
 impl Command {
     /// Converts the command into an AT command string.
     fn to_at(&self, buf: &mut [u8]) -> Result<&[u8], ()> {
-        // TODO
+        match self {
+            Command::AllocateSocket => todo!(),
+            Command::DnsLookup { host } => todo!(),
+            Command::ConnectSocket {
+                socket_id,
+                socket_type,
+                addr,
+            } => todo!(),
+            Command::SendData { socket_id, data } => todo!(),
+            Command::ReadData { socket_id, data } => todo!(),
+            Command::DataAvailable { socket_id } => todo!(),
+        }
 
         Err(())
     }
 
     fn to_command_hint(&self) -> CommandHint {
-        todo!()
+        match self {
+            Command::AllocateSocket => CommandHint::AllocateSocket,
+            Command::DnsLookup { .. } => CommandHint::DnsLookup,
+            Command::ConnectSocket { .. } => CommandHint::ConnectSocket,
+            Command::SendData { .. } => CommandHint::SendData,
+            Command::ReadData { .. } => CommandHint::ReadData,
+            Command::DataAvailable { .. } => CommandHint::DataAvailable,
+        }
     }
 }
 
@@ -111,6 +130,7 @@ enum CommandHint {
     // ReadImsi,
     // ReadImei,
     // SetApn,
+    AllocateSocket,
     DnsLookup,
     ConnectSocket,
     SendData,
@@ -155,6 +175,9 @@ pub enum Response {
     //     success: bool,
     //     ret: StaticBuffer,
     // },
+    AllocateSocket {
+        id: u8,
+    },
     DnsLookup {
         #[defmt(Debug2Format)]
         ips: Vec<IpAddr, 3>,
@@ -282,6 +305,9 @@ where
 
         let tx_block = async {
             let tx_buf = &mut [0; 1024];
+
+            defmt::info!("Starting modem TX worker");
+
             loop {
                 let msg = command_rx.receive().await;
 
@@ -304,6 +330,8 @@ where
         let rx_block = async {
             // The RX buffer needs to be quite large, e.g. a band scan response can be huge.
             let rx_buf = &mut [0; 4096];
+
+            defmt::info!("Starting modem RX worker");
 
             loop {
                 // TODO: If we did not get a complete message we need to move the partial buffer,

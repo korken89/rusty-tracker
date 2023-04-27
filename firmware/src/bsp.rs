@@ -123,6 +123,8 @@ bind_interrupts!(struct Irqs {
 pub fn init(c: cortex_m::Peripherals) -> (BoardLeds, Voltages, ChargerStatus, LteComponents) {
     let mut config = embassy_nrf::config::Config::default();
     config.hfclk_source = HfclkSource::ExternalXtal;
+    config.dcdc.reg0 = true;
+    config.dcdc.reg1 = true;
     let p = embassy_nrf::init(config);
 
     //

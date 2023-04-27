@@ -322,7 +322,14 @@ impl Modem {
             return Err(());
         }
 
-        todo!()
+        let mut modem = MODEM_STATE.access().await;
+        let modem = modem.as_mut().expect("ICE: Modem not initialized");
+
+        modem.command_tx.send(at::Command::AllocateSocket).await;
+        match modem.response_rx.receive().await {
+            at::Response::AllocateSocket { id } => Ok(Socket { id }),
+            _ => Err(()),
+        }
     }
 
     /// DNS Lookup a hostname or address.
@@ -342,18 +349,13 @@ impl Modem {
 pub struct Socket {
     // The ID (0-6) given from the modem on creation.
     id: u8,
-    // Protocol it is allocated for.
-    protocol: Protocol,
 }
 
 impl Socket {
     /// Connect to an address and port.
     pub async fn connect(self, addr: SocketAddr) -> Result<Connection, ()> {
-        let modem = MODEM_STATE
-            .access()
-            .await
-            .as_mut()
-            .expect("ICE: Modem not initialized");
+        let mut modem = MODEM_STATE.access().await;
+        let modem = modem.as_mut().expect("ICE: Modem not initialized");
 
         todo!()
     }
@@ -380,7 +382,8 @@ impl Drop for Socket {
 #[derive(Debug, defmt::Format)]
 pub struct Connection {
     socket: Socket,
-    // TODO
+    // Protocol it is allocated for.
+    protocol: Protocol,
 }
 
 const NEW_WAKER: CriticalSectionWakerRegistration = CriticalSectionWakerRegistration::new();

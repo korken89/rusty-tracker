@@ -29,12 +29,12 @@ pub async fn led_control(
 
         let (r, g, b) = volt_to_rgb(vbat);
 
-        defmt::info!(
-            "Charging status: {}, Vbat = {} V, RGB = {}",
-            charging_status,
-            vbat,
-            (r, g, b)
-        );
+        // defmt::info!(
+        //     "Charging status: {}, Vbat = {} V, RGB = {}",
+        //     charging_status,
+        //     vbat,
+        //     (r, g, b)
+        // );
 
         match charging_status {
             ChargingStatus::No5V => {
