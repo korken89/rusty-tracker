@@ -1,10 +1,9 @@
+use super::Protocol;
 use crate::ssq;
 use core::{cell::RefCell, pin::pin};
 use futures::future::select;
 use heapless::{String, Vec};
 use no_std_net::{IpAddr, SocketAddr};
-
-use super::Protocol;
 
 pub trait AsyncWriter {
     /// Write data.
@@ -34,28 +33,133 @@ pub trait AsyncReadUntilIdle {
 
 // tx.write(b"AT+USORD=0,0\r\n").await.unwrap(); // Num bytes in socket
 
-/// Socket buffer size.
-pub const SOCKET_BUFFER_SIZE: usize = 1024;
+/// Helpers to share a buffer between the RX/TX worker and the driver when sending, potentially
+/// large, amounts of data over a socket.
+///
+/// While one can add buffers to the Command/Response queue it means that multiple X of stack space
+/// will be used, as the queues work by move. With this abstraction only references are moved.
+pub mod socket_buffer {
+    use atomic_polyfill::{AtomicU8, Ordering};
+    use core::{cell::UnsafeCell, future::poll_fn, task::Poll};
+    use rtic_common::waker_registration::CriticalSectionWakerRegistration;
 
-/// Buffer used for moving data between modem and communication worker.
-#[derive(Debug, defmt::Format)]
-pub struct StaticBuffer {
-    backing_store: &'static mut [u8; SOCKET_BUFFER_SIZE],
-    len: usize,
-}
+    /// Socket buffer size.
+    pub const SOCKET_BUFFER_SIZE: usize = 1024;
 
-impl StaticBuffer {
-    pub fn new(backing_store: &'static mut [u8; SOCKET_BUFFER_SIZE]) -> Self {
-        Self {
-            backing_store,
-            len: 0,
+    const PING: u8 = 0;
+    const PONG: u8 = 1;
+
+    /// Buffer used for moving data between modem and communication worker.
+    pub struct StaticPingPongBuffer {
+        owner: AtomicU8,
+        backing_store: UnsafeCell<BackingStore>,
+        waker: CriticalSectionWakerRegistration,
+    }
+
+    impl core::fmt::Debug for StaticPingPongBuffer {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            if self.owner.load(Ordering::Relaxed) == PING {
+                write!(f, "StaticPingPongBuffer {{ owner: us, data: ... }}")
+            } else {
+                write!(f, "StaticPingPongBuffer {{ owner: handle, data: ... }}")
+            }
+        }
+    }
+
+    impl defmt::Format for StaticPingPongBuffer {
+        fn format(&self, fmt: defmt::Formatter) {
+            if self.owner.load(Ordering::Relaxed) == PING {
+                defmt::write!(fmt, "StaticPingPongBuffer {{ owner: us, data: ... }}")
+            } else {
+                defmt::write!(fmt, "StaticPingPongBuffer {{ owner: handle, data: ... }}")
+            }
+        }
+    }
+
+    /// Definition of the data backing the buffer.
+    #[derive(Debug, defmt::Format)]
+    pub struct BackingStore {
+        buffer: &'static mut [u8; SOCKET_BUFFER_SIZE],
+        len: usize,
+    }
+
+    impl StaticPingPongBuffer {
+        /// Create a new buffer from static storage.
+        pub fn new(buffer: &'static mut [u8; SOCKET_BUFFER_SIZE]) -> Self {
+            Self {
+                owner: AtomicU8::new(PING),
+                backing_store: UnsafeCell::new(BackingStore { buffer, len: 0 }),
+                waker: CriticalSectionWakerRegistration::new(),
+            }
+        }
+
+        /// Access the underlying buffer.
+        pub fn access_buffer(&mut self) -> Option<&mut BackingStore> {
+            if self.owner.load(Ordering::Relaxed) == PING {
+                Some(unsafe { &mut *self.backing_store.get() })
+            } else {
+                None
+            }
+        }
+
+        /// Get a read handle from
+        pub fn read_handle(&mut self) -> Option<ReadHandle> {
+            if self
+                .owner
+                .compare_exchange(PING, PONG, Ordering::SeqCst, Ordering::Relaxed)
+                .is_ok()
+            {
+                Some(ReadHandle { inner: &self })
+            } else {
+                None
+            }
+        }
+
+        /// Wait for the read handle to be returned.
+        pub async fn wait_for_read_handle(&mut self) {
+            poll_fn(|cx| {
+                self.waker.register(cx.waker());
+
+                if self.owner.load(Ordering::Relaxed) == PING {
+                    Poll::Ready(())
+                } else {
+                    Poll::Pending
+                }
+            });
+        }
+    }
+
+    /// Read handle of a ping pong buffer.
+    #[derive(Debug, defmt::Format)]
+    pub struct ReadHandle {
+        inner: &'static StaticPingPongBuffer,
+    }
+
+    impl ReadHandle {
+        /// Access the buffer the read handle points to.
+        pub fn access_buffer(&mut self) -> &[u8] {
+            let bs = unsafe { &*self.inner.backing_store.get() };
+            let len = bs.len;
+            &bs.buffer[..len]
+        }
+
+        /// Release the read handle.
+        pub fn release(self) {
+            // Via `drop`
+        }
+    }
+
+    impl Drop for ReadHandle {
+        fn drop(&mut self) {
+            self.inner.owner.store(PING, Ordering::SeqCst);
+            self.inner.waker.wake();
         }
     }
 }
 
-// static mut BUF: StaticBuffer = {
+// static mut BUF: StaticPingPongBuffer = {
 //     static mut B: [u8; SOCKET_BUFFER_SIZE] = [0; SOCKET_BUFFER_SIZE];
-//     StaticBuffer::new(unsafe { &mut B })
+//     StaticPingPongBuffer::new(unsafe { &mut B })
 // };
 
 // TODO: Needs to be able to be parsed into an AT command string using `at_command`
@@ -66,11 +170,11 @@ pub enum Command {
     // ReadImsi,       // CIMI
     // ReadImei,       // CGSN
     // SetApn {
-    //     apd: StaticBuffer,
+    //     apd: StaticPingPongBuffer,
     // }, // UPSD
     AllocateSocket,
     DnsLookup {
-        host: StaticBuffer,
+        host: socket_buffer::ReadHandle,
     }, // UDNSRN
     ConnectSocket {
         socket_id: u8,
@@ -80,11 +184,10 @@ pub enum Command {
     }, // USOCO
     SendData {
         socket_id: u8,
-        data: StaticBuffer,
+        data: socket_buffer::ReadHandle,
     }, // USOWR
     ReadData {
         socket_id: u8,
-        data: StaticBuffer,
     }, // USORD
     DataAvailable {
         socket_id: u8,
@@ -103,7 +206,7 @@ impl Command {
                 addr,
             } => todo!(),
             Command::SendData { socket_id, data } => todo!(),
-            Command::ReadData { socket_id, data } => todo!(),
+            Command::ReadData { socket_id } => todo!(),
             Command::DataAvailable { socket_id } => todo!(),
         }
 
@@ -173,7 +276,7 @@ pub enum Response {
     // },
     // SetApn {
     //     success: bool,
-    //     ret: StaticBuffer,
+    //     ret: StaticPingPongBuffer,
     // },
     AllocateSocket {
         id: u8,
@@ -181,18 +284,16 @@ pub enum Response {
     DnsLookup {
         #[defmt(Debug2Format)]
         ips: Vec<IpAddr, 3>,
-        ret: StaticBuffer,
     },
     ConnectSocket {
         success: bool,
     },
     SendData {
         success: bool,
-        ret: StaticBuffer,
     },
     ReadData {
         success: bool,
-        data: StaticBuffer,
+        data: socket_buffer::ReadHandle,
     },
     DataAvailable {
         num_bytes: usize,

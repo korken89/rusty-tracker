@@ -59,7 +59,7 @@ pub struct Modem {}
 struct ModemState {
     command_tx: ssq::Sender<'static, at::Command>,
     response_rx: ssq::Receiver<'static, at::Response>,
-    socket_buffer: Option<at::StaticBuffer>,
+    socket_buffer: Option<at::StaticPingPongBuffer>,
 }
 
 mod consts {
@@ -285,7 +285,7 @@ impl Modem {
 
         let socket_buffer = unsafe {
             static mut B: [u8; at::SOCKET_BUFFER_SIZE] = [0; at::SOCKET_BUFFER_SIZE];
-            Some(at::StaticBuffer::new(&mut B))
+            Some(at::StaticPingPongBuffer::new(&mut B))
         };
 
         let modem_state = ModemState {
@@ -317,7 +317,7 @@ impl Modem {
     }
 
     /// Allocate a socket from the modem, the maximum concurrent sockets supported is 7.
-    pub async fn allocate_socket(protocol: Protocol) -> Result<Socket, ()> {
+    pub async fn allocate_socket() -> Result<Socket, ()> {
         if !Self::is_initialized() {
             return Err(());
         }
@@ -328,7 +328,10 @@ impl Modem {
         modem.command_tx.send(at::Command::AllocateSocket).await;
         match modem.response_rx.receive().await {
             at::Response::AllocateSocket { id } => Ok(Socket { id }),
-            _ => Err(()),
+            r => panic!(
+                "ICE: The comms worker returned an invalid response: {:?}",
+                r
+            ),
         }
     }
 
@@ -353,7 +356,7 @@ pub struct Socket {
 
 impl Socket {
     /// Connect to an address and port.
-    pub async fn connect(self, addr: SocketAddr) -> Result<Connection, ()> {
+    pub async fn connect(self, addr: SocketAddr, protocol: Protocol) -> Result<Connection, ()> {
         let mut modem = MODEM_STATE.access().await;
         let modem = modem.as_mut().expect("ICE: Modem not initialized");
 
