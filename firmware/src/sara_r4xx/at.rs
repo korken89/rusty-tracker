@@ -165,13 +165,6 @@ pub mod socket_buffer {
 // TODO: Needs to be able to be parsed into an AT command string using `at_command`
 #[derive(Debug, defmt::Format)]
 pub enum Command {
-    // ReadModuleName, // ATI0
-    // ReadVersions,   // ATI9
-    // ReadImsi,       // CIMI
-    // ReadImei,       // CGSN
-    // SetApn {
-    //     apd: StaticPingPongBuffer,
-    // }, // UPSD
     AllocateSocket,
     DnsLookup {
         host: socket_buffer::ReadHandle,
@@ -228,11 +221,6 @@ impl Command {
 // Used in the TX/RX worker to hint from TX to RX what response is expected.
 #[derive(Debug, defmt::Format, Copy, Clone, PartialEq, Eq)]
 enum CommandHint {
-    // ReadModuleName,
-    // ReadVersions,
-    // ReadImsi,
-    // ReadImei,
-    // SetApn,
     AllocateSocket,
     DnsLookup,
     ConnectSocket,
@@ -261,23 +249,6 @@ impl CommandHint {
 // TODO: Needs to be able to be parsed from an AT command string using `at_command`
 #[derive(Debug, defmt::Format)]
 pub enum Response {
-    // ReadModuleName {
-    //     name: String<32>,
-    // },
-    // ReadVersions {
-    //     modem_version: String<16>,
-    //     application_version: String<16>,
-    // },
-    // ReadImsi {
-    //     imsi: u64,
-    // },
-    // ReadImei {
-    //     imei: u64,
-    // },
-    // SetApn {
-    //     success: bool,
-    //     ret: StaticPingPongBuffer,
-    // },
     AllocateSocket {
         id: u8,
     },
@@ -329,6 +300,31 @@ impl Response {
     /// Converts the AT string into a response. Returns the response and how much of the buffer
     /// that was used.
     fn from_at(buf: &[u8], hint: CommandHint) -> Result<(usize, Response), ()> {
+        // TODO: Error check the message.
+        // - Does it start with an error code? (+CME / +CMS)
+        // - Does it start with a command/response code?
+        // - Does it end with the correct ending, or is there more data to come?
+
+        // TODO
+        let hint = hint.to_hint();
+
+        if buf.starts_with(hint.as_bytes()) {
+            if !buf.ends_with(b"\r\nOK\r\n") {
+                // More data is expected in this command
+            }
+
+            // Expected command found
+            // TODO
+        } else if buf.starts_with(b"+CME") {
+            defmt::error!("Got CME for {}", hint);
+            // TODO error
+        } else if buf.starts_with(b"+CMS") {
+            defmt::error!("Got CMS for {}", hint);
+            // TODO error
+        } else {
+            // ???
+        }
+
         // TODO: Is this overkill?
         // if find_subsequence(buf, b"\r\nOK\r\n") {
         //     // There is a complete command in the buffer
@@ -337,9 +333,6 @@ impl Response {
         if buf.ends_with(b"\r\nOK\r\n") {
             // There is a complete command in the buffer
         }
-
-        // TODO
-        let hint = hint.to_hint();
 
         Err(())
     }
@@ -366,6 +359,7 @@ pub struct Communication<'a, RX, TX> {
     tx: TX,
     command_rx: ssq::Receiver<'a, Command>, // 1. We receive commands to send here
     response_tx: ssq::Sender<'a, Response>, // 2. And send the responses back here
+    rx_socket_buffer: socket_buffer::StaticPingPongBuffer,
     notifications: (), // TODO: Place unsolicited messages here? Or talk directly.
 }
 
@@ -379,6 +373,7 @@ where
         tx: TX,
         command_rx: ssq::Receiver<'a, Command>,
         response_tx: ssq::Sender<'a, Response>,
+        rx_socket_buffer: socket_buffer::StaticPingPongBuffer,
         notifications: (),
     ) -> Self {
         Self {
@@ -386,6 +381,7 @@ where
             tx,
             command_rx,
             response_tx,
+            rx_socket_buffer,
             notifications,
         }
     }
@@ -397,6 +393,7 @@ where
             tx,
             command_rx,
             response_tx,
+            rx_socket_buffer, // TODO: Receive SOCKET RX data here
             notifications,
         } = self;
 
@@ -435,8 +432,8 @@ where
             defmt::info!("Starting modem RX worker");
 
             loop {
-                // TODO: If we did not get a complete message we need to move the partial buffer,
-                // and continue filling from where we expected more data
+                // TODO: If we did not get a complete message we need to continue filling the
+                // partial buffer.
 
                 let len = rx.read_until_idle(rx_buf).await;
 

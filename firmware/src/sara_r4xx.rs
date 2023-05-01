@@ -59,7 +59,7 @@ pub struct Modem {}
 struct ModemState {
     command_tx: ssq::Sender<'static, at::Command>,
     response_rx: ssq::Receiver<'static, at::Response>,
-    socket_buffer: Option<at::StaticPingPongBuffer>,
+    tx_socket_buffer: at::socket_buffer::StaticPingPongBuffer,
 }
 
 mod consts {
@@ -283,15 +283,22 @@ impl Modem {
             RESPONSE_Q.split()
         };
 
-        let socket_buffer = unsafe {
-            static mut B: [u8; at::SOCKET_BUFFER_SIZE] = [0; at::SOCKET_BUFFER_SIZE];
-            Some(at::StaticPingPongBuffer::new(&mut B))
+        let tx_socket_buffer = unsafe {
+            static mut B: [u8; at::socket_buffer::SOCKET_BUFFER_SIZE] =
+                [0; at::socket_buffer::SOCKET_BUFFER_SIZE];
+            at::socket_buffer::StaticPingPongBuffer::new(&mut B)
+        };
+
+        let rx_socket_buffer = unsafe {
+            static mut B: [u8; at::socket_buffer::SOCKET_BUFFER_SIZE] =
+                [0; at::socket_buffer::SOCKET_BUFFER_SIZE];
+            at::socket_buffer::StaticPingPongBuffer::new(&mut B)
         };
 
         let modem_state = ModemState {
             command_tx,
             response_rx,
-            socket_buffer,
+            tx_socket_buffer,
         };
 
         {
@@ -302,8 +309,14 @@ impl Modem {
         }
 
         // Create communication interface
-        let at_comms =
-            at::Communication::new(at_interface.0, at_interface.1, command_rx, response_tx, ());
+        let at_comms = at::Communication::new(
+            at_interface.0,
+            at_interface.1,
+            command_rx,
+            response_tx,
+            rx_socket_buffer,
+            (),
+        );
 
         // Mark the modem as initialized
         MODEM_INITIALIZED.store(consts::MODEM_INITIALIZED, Ordering::SeqCst);
