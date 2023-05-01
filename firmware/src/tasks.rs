@@ -103,3 +103,15 @@ pub async fn modem_worker(lte_components: LteComponents) -> ! {
         Systick::delay(500.millis()).await;
     }
 }
+
+pub async fn modem_test() {
+    while !sara_r4xx::Modem::is_initialized() {
+        Systick::delay(1.secs()).await;
+    }
+
+    defmt::info!("Starting modem test...");
+
+    defmt::info!("Performing DNS lookup");
+    let dns = sara_r4xx::Modem::dns_lookup("one.one.one.one").await;
+    defmt::info!("Result: {:?}", dns);
+}

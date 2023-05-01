@@ -110,15 +110,12 @@ async fn it_works() {
 
     println!("info: {info:#?}");
 
-    let socket = Modem::allocate_socket(Protocol::Tcp).await.unwrap();
+    let socket = Modem::allocate_socket().await.unwrap();
 
     println!("socket: {socket:#?}");
 
     let conn = socket
-        .connect(SocketAddr::V4(SocketAddrV4::new(
-            Ipv4Addr::new(127, 0, 0, 1),
-            8080,
-        )))
+        .connect(SocketAddr::from(([127, 0, 0, 1], 443)), Protocol::Tcp)
         .await
         .unwrap();
     // let (rx, tx) = tokio::sync::mpsc::channel(100);

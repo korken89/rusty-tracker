@@ -18,13 +18,20 @@
 //!
 //!
 
-use crate::ssq::{self, SingleSlotQueue};
+use core::mem::MaybeUninit;
+
+use crate::{
+    sara_r4xx::at::socket_buffer::StaticPingPongBuffer,
+    ssq::{self, SingleSlotQueue},
+};
 pub use at::{AsyncReadUntilIdle, AsyncWriter};
 use atomic_polyfill::{AtomicU8, Ordering};
 use heapless::String;
 use no_std_net::{IpAddr, SocketAddr};
 use rtic_common::waker_registration::CriticalSectionWakerRegistration;
 use rtic_sync::arbiter::Arbiter;
+
+use self::at::socket_buffer::WriteHandle;
 
 mod at;
 
@@ -59,7 +66,7 @@ pub struct Modem {}
 struct ModemState {
     command_tx: ssq::Sender<'static, at::Command>,
     response_rx: ssq::Receiver<'static, at::Response>,
-    tx_socket_buffer: at::socket_buffer::StaticPingPongBuffer,
+    tx_socket_buffer: WriteHandle<'static>,
 }
 
 mod consts {
@@ -67,6 +74,9 @@ mod consts {
     pub const MODEM_INITIALIZING: u8 = 1;
     pub const MODEM_INITIALIZED: u8 = 2;
 }
+
+#[derive(Clone, PartialEq, Eq, Debug, defmt::Format)]
+pub struct DnsResult(#[defmt(Debug2Format)] pub heapless::Vec<IpAddr, 3>);
 
 static MODEM_STATE: Arbiter<Option<ModemState>> = Arbiter::new(None);
 
@@ -284,15 +294,13 @@ impl Modem {
         };
 
         let tx_socket_buffer = unsafe {
-            static mut B: [u8; at::socket_buffer::SOCKET_BUFFER_SIZE] =
-                [0; at::socket_buffer::SOCKET_BUFFER_SIZE];
-            at::socket_buffer::StaticPingPongBuffer::new(&mut B)
+            static mut S: StaticPingPongBuffer = StaticPingPongBuffer::new();
+            S.write_handle()
         };
 
         let rx_socket_buffer = unsafe {
-            static mut B: [u8; at::socket_buffer::SOCKET_BUFFER_SIZE] =
-                [0; at::socket_buffer::SOCKET_BUFFER_SIZE];
-            at::socket_buffer::StaticPingPongBuffer::new(&mut B)
+            static mut S: StaticPingPongBuffer = StaticPingPongBuffer::new();
+            S.write_handle()
         };
 
         let modem_state = ModemState {
@@ -349,12 +357,25 @@ impl Modem {
     }
 
     /// DNS Lookup a hostname or address.
-    pub async fn dns_lookup(hostname: &'static str) -> Result<heapless::Vec<IpAddr, 3>, ()> {
+    pub async fn dns_lookup(hostname: &'static str) -> Result<DnsResult, ()> {
         if !Self::is_initialized() {
             return Err(());
         }
 
-        todo!()
+        let mut modem = MODEM_STATE.access().await;
+        let modem = modem.as_mut().expect("ICE: Modem not initialized");
+
+        modem
+            .command_tx
+            .send(at::Command::DnsLookup { host: hostname })
+            .await;
+        match modem.response_rx.receive().await {
+            at::Response::DnsLookup { ips } => Ok(DnsResult(ips)),
+            r => panic!(
+                "ICE: The comms worker returned an invalid response: {:?}",
+                r
+            ),
+        }
     }
 
     // TODO: Other functions

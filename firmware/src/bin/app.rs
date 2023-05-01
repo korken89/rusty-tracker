@@ -38,8 +38,14 @@ mod app {
 
         led_control::spawn(leds, voltages, charger_status).ok();
         modem_worker::spawn(lte_components).ok();
+        modem_test::spawn().ok();
 
         (Shared {}, Local {})
+    }
+
+    #[task]
+    async fn modem_test(_: modem_test::Context) {
+        tasks::modem_test().await;
     }
 
     #[task]

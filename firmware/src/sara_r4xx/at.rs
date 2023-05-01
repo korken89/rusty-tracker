@@ -1,3 +1,5 @@
+use self::socket_buffer::WriteHandle;
+
 use super::Protocol;
 use crate::ssq;
 use core::{cell::RefCell, pin::pin};
@@ -56,6 +58,13 @@ pub mod socket_buffer {
         waker: CriticalSectionWakerRegistration,
     }
 
+    /// Definition of the data backing the buffer.
+    #[derive(Debug, defmt::Format)]
+    pub struct BackingStore {
+        buffer: [u8; SOCKET_BUFFER_SIZE],
+        len: usize,
+    }
+
     impl core::fmt::Debug for StaticPingPongBuffer {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             if self.owner.load(Ordering::Relaxed) == PING {
@@ -76,27 +85,36 @@ pub mod socket_buffer {
         }
     }
 
-    /// Definition of the data backing the buffer.
-    #[derive(Debug, defmt::Format)]
-    pub struct BackingStore {
-        buffer: &'static mut [u8; SOCKET_BUFFER_SIZE],
-        len: usize,
-    }
-
     impl StaticPingPongBuffer {
         /// Create a new buffer from static storage.
-        pub fn new(buffer: &'static mut [u8; SOCKET_BUFFER_SIZE]) -> Self {
+        pub const fn new() -> Self {
             Self {
                 owner: AtomicU8::new(PING),
-                backing_store: UnsafeCell::new(BackingStore { buffer, len: 0 }),
+                backing_store: UnsafeCell::new(BackingStore {
+                    buffer: [0; SOCKET_BUFFER_SIZE],
+                    len: 0,
+                }),
                 waker: CriticalSectionWakerRegistration::new(),
             }
         }
 
+        /// Create a write handle.
+        pub fn write_handle(&self) -> WriteHandle {
+            WriteHandle { inner: self }
+        }
+    }
+
+    /// Read handle of a ping pong buffer.
+    #[derive(Debug, defmt::Format)]
+    pub struct WriteHandle<'a> {
+        inner: &'a StaticPingPongBuffer,
+    }
+
+    impl<'a> WriteHandle<'a> {
         /// Access the underlying buffer.
         pub fn access_buffer(&mut self) -> Option<&mut BackingStore> {
-            if self.owner.load(Ordering::Relaxed) == PING {
-                Some(unsafe { &mut *self.backing_store.get() })
+            if self.inner.owner.load(Ordering::Relaxed) == PING {
+                Some(unsafe { &mut *self.inner.backing_store.get() })
             } else {
                 None
             }
@@ -105,37 +123,39 @@ pub mod socket_buffer {
         /// Get a read handle from
         pub fn read_handle(&mut self) -> Option<ReadHandle> {
             if self
+                .inner
                 .owner
                 .compare_exchange(PING, PONG, Ordering::SeqCst, Ordering::Relaxed)
                 .is_ok()
             {
-                Some(ReadHandle { inner: &self })
+                Some(ReadHandle { inner: &self.inner })
             } else {
                 None
             }
         }
 
-        /// Wait for the read handle to be returned.
-        pub async fn wait_for_read_handle(&mut self) {
+        /// Wait for the read handle to be returned and access the underlying storage.
+        pub async fn wait_for_access(&mut self) -> &mut BackingStore {
             poll_fn(|cx| {
-                self.waker.register(cx.waker());
+                self.inner.waker.register(cx.waker());
 
-                if self.owner.load(Ordering::Relaxed) == PING {
-                    Poll::Ready(())
+                if self.inner.owner.load(Ordering::Relaxed) == PING {
+                    Poll::Ready(unsafe { &mut *self.inner.backing_store.get() })
                 } else {
                     Poll::Pending
                 }
-            });
+            })
+            .await
         }
     }
 
     /// Read handle of a ping pong buffer.
     #[derive(Debug, defmt::Format)]
-    pub struct ReadHandle {
-        inner: &'static StaticPingPongBuffer,
+    pub struct ReadHandle<'a> {
+        inner: &'a StaticPingPongBuffer,
     }
 
-    impl ReadHandle {
+    impl<'a> ReadHandle<'a> {
         /// Access the buffer the read handle points to.
         pub fn access_buffer(&mut self) -> &[u8] {
             let bs = unsafe { &*self.inner.backing_store.get() };
@@ -149,7 +169,7 @@ pub mod socket_buffer {
         }
     }
 
-    impl Drop for ReadHandle {
+    impl<'a> Drop for ReadHandle<'a> {
         fn drop(&mut self) {
             self.inner.owner.store(PING, Ordering::SeqCst);
             self.inner.waker.wake();
@@ -157,17 +177,12 @@ pub mod socket_buffer {
     }
 }
 
-// static mut BUF: StaticPingPongBuffer = {
-//     static mut B: [u8; SOCKET_BUFFER_SIZE] = [0; SOCKET_BUFFER_SIZE];
-//     StaticPingPongBuffer::new(unsafe { &mut B })
-// };
-
 // TODO: Needs to be able to be parsed into an AT command string using `at_command`
 #[derive(Debug, defmt::Format)]
 pub enum Command {
     AllocateSocket,
     DnsLookup {
-        host: socket_buffer::ReadHandle,
+        host: &'static str, //socket_buffer::ReadHandle<'static>,
     }, // UDNSRN
     ConnectSocket {
         socket_id: u8,
@@ -177,7 +192,7 @@ pub enum Command {
     }, // USOCO
     SendData {
         socket_id: u8,
-        data: socket_buffer::ReadHandle,
+        data: socket_buffer::ReadHandle<'static>,
     }, // USOWR
     ReadData {
         socket_id: u8,
@@ -189,18 +204,26 @@ pub enum Command {
 
 impl Command {
     /// Converts the command into an AT command string.
-    fn to_at(&self, buf: &mut [u8]) -> Result<&[u8], ()> {
+    fn to_at<'a>(&self, buf: &'a mut [u8]) -> Result<&'a [u8], ()> {
         match self {
-            Command::AllocateSocket => todo!(),
-            Command::DnsLookup { host } => todo!(),
+            Command::AllocateSocket => defmt::error!("Not implemented"),
+            Command::DnsLookup { host } => {
+                // tx.write(b"AT+UDNSRN=0,\"one.one.one.one\"\r\n").await.unwrap(); // DNS
+                return Ok(at_commands::builder::CommandBuilder::create_set(buf, false)
+                    .named("AT+UDNSRN")
+                    .with_int_parameter(0)
+                    .with_string_parameter(host)
+                    .finish()
+                    .unwrap());
+            }
             Command::ConnectSocket {
                 socket_id,
                 socket_type,
                 addr,
-            } => todo!(),
-            Command::SendData { socket_id, data } => todo!(),
-            Command::ReadData { socket_id } => todo!(),
-            Command::DataAvailable { socket_id } => todo!(),
+            } => defmt::error!("Not implemented"),
+            Command::SendData { socket_id, data } => defmt::error!("Not implemented"),
+            Command::ReadData { socket_id } => defmt::error!("Not implemented"),
+            Command::DataAvailable { socket_id } => defmt::error!("Not implemented"),
         }
 
         Err(())
@@ -220,7 +243,7 @@ impl Command {
 
 // Used in the TX/RX worker to hint from TX to RX what response is expected.
 #[derive(Debug, defmt::Format, Copy, Clone, PartialEq, Eq)]
-enum CommandHint {
+pub enum CommandHint {
     AllocateSocket,
     DnsLookup,
     ConnectSocket,
@@ -234,15 +257,51 @@ impl CommandHint {
     fn to_hint(&self) -> String<16> {
         let mut s = String::new();
 
-        // match self {
-        //     CommandHint::ToDo => s.push_str("+TODO").ok(),
-        // };
+        match self {
+            CommandHint::AllocateSocket => defmt::error!("Not implemented"),
+            CommandHint::DnsLookup => {
+                s.push_str("+UDNSRN").ok();
+            }
+            CommandHint::ConnectSocket => defmt::error!("Not implemented"),
+            CommandHint::SendData => defmt::error!("Not implemented"),
+            CommandHint::ReadData => defmt::error!("Not implemented"),
+            CommandHint::DataAvailable => defmt::error!("Not implemented"),
+        };
 
         s
     }
 
     fn to_timeout_ms(&self) -> u32 {
-        todo!()
+        match self {
+            CommandHint::AllocateSocket => 0,
+            CommandHint::DnsLookup => 332_000,
+            CommandHint::ConnectSocket => 0,
+            CommandHint::SendData => 0,
+            CommandHint::ReadData => 0,
+            CommandHint::DataAvailable => 0,
+        }
+    }
+
+    // The buffer holds the string without the hind and the ending `\r\nOK\r\n`
+    fn parse(&self, buf: &[u8]) -> Result<(usize, Response), FromAtError> {
+        match self {
+            CommandHint::AllocateSocket => todo!(),
+            CommandHint::DnsLookup => {
+                let mut ips = heapless::Vec::new();
+                for ip in buf.split(|ch| *ch == ',' as u8) {
+                    // Each IP string, remove surrounding quotes
+                    ips.push(heapless::String::from(
+                        core::str::from_utf8(&ip[1..ip.len() - 1]).unwrap(),
+                    ));
+                }
+
+                return Ok((buf.len(), Response::DnsLookup { ips }));
+            }
+            CommandHint::ConnectSocket => todo!(),
+            CommandHint::SendData => todo!(),
+            CommandHint::ReadData => todo!(),
+            CommandHint::DataAvailable => todo!(),
+        }
     }
 }
 
@@ -254,7 +313,7 @@ pub enum Response {
     },
     DnsLookup {
         #[defmt(Debug2Format)]
-        ips: Vec<IpAddr, 3>,
+        ips: Vec<heapless::String<15>, 3>,
     },
     ConnectSocket {
         success: bool,
@@ -264,7 +323,7 @@ pub enum Response {
     },
     ReadData {
         success: bool,
-        data: socket_buffer::ReadHandle,
+        data: socket_buffer::ReadHandle<'static>,
     },
     DataAvailable {
         num_bytes: usize,
@@ -296,45 +355,74 @@ pub enum Response {
 //     }
 // }
 
+pub const fn trim_ascii_start(mut bytes: &[u8]) -> &[u8] {
+    while let [first, rest @ ..] = bytes {
+        if first.is_ascii_whitespace() {
+            bytes = rest;
+        } else {
+            break;
+        }
+    }
+    bytes
+}
+
+pub const fn trim_ascii_end(mut bytes: &[u8]) -> &[u8] {
+    while let [rest @ .., last] = bytes {
+        if last.is_ascii_whitespace() {
+            bytes = rest;
+        } else {
+            break;
+        }
+    }
+    bytes
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, defmt::Format)]
+pub enum FromAtError {
+    ErrorResponse,
+    ExpectsMoreData,
+    Unknown,
+}
+
 impl Response {
     /// Converts the AT string into a response. Returns the response and how much of the buffer
     /// that was used.
-    fn from_at(buf: &[u8], hint: CommandHint) -> Result<(usize, Response), ()> {
+    fn from_at(buf: &[u8], hint: CommandHint) -> Result<(usize, Response), FromAtError> {
         // TODO: Error check the message.
         // - Does it start with an error code? (+CME / +CMS)
         // - Does it start with a command/response code?
         // - Does it end with the correct ending, or is there more data to come?
 
         // TODO
-        let hint = hint.to_hint();
+        let hint_str = hint.to_hint();
 
-        if buf.starts_with(hint.as_bytes()) {
+        if buf.starts_with(hint_str.as_bytes()) {
+            // TODO: Is this overkill?
+            // if find_subsequence(buf, b"\r\nOK\r\n") {
+            //     // There is a complete command in the buffer
+            // }
+            // VS this:
             if !buf.ends_with(b"\r\nOK\r\n") {
                 // More data is expected in this command
+                return Err(FromAtError::ExpectsMoreData);
             }
 
-            // Expected command found
-            // TODO
+            // Expected command found, remove header including `:` and ending OK, and trim any
+            // other whitespace
+            let len = buf.len();
+            hint.parse(trim_ascii_end(trim_ascii_start(
+                &buf[hint_str.len() + 1..len - 6],
+            )))
         } else if buf.starts_with(b"+CME") {
             defmt::error!("Got CME for {}", hint);
-            // TODO error
+            Err(FromAtError::ErrorResponse)
         } else if buf.starts_with(b"+CMS") {
             defmt::error!("Got CMS for {}", hint);
-            // TODO error
+            Err(FromAtError::ErrorResponse)
         } else {
             // ???
+            Err(FromAtError::Unknown)
         }
-
-        // TODO: Is this overkill?
-        // if find_subsequence(buf, b"\r\nOK\r\n") {
-        //     // There is a complete command in the buffer
-        // }
-        // VS this:
-        if buf.ends_with(b"\r\nOK\r\n") {
-            // There is a complete command in the buffer
-        }
-
-        Err(())
     }
 }
 
@@ -359,7 +447,7 @@ pub struct Communication<'a, RX, TX> {
     tx: TX,
     command_rx: ssq::Receiver<'a, Command>, // 1. We receive commands to send here
     response_tx: ssq::Sender<'a, Response>, // 2. And send the responses back here
-    rx_socket_buffer: socket_buffer::StaticPingPongBuffer,
+    rx_socket_buffer: WriteHandle<'a>,
     notifications: (), // TODO: Place unsolicited messages here? Or talk directly.
 }
 
@@ -373,7 +461,7 @@ where
         tx: TX,
         command_rx: ssq::Receiver<'a, Command>,
         response_tx: ssq::Sender<'a, Response>,
-        rx_socket_buffer: socket_buffer::StaticPingPongBuffer,
+        rx_socket_buffer: WriteHandle<'a>,
         notifications: (),
     ) -> Self {
         Self {
@@ -404,7 +492,7 @@ where
         let tx_block = async {
             let tx_buf = &mut [0; 1024];
 
-            defmt::info!("Starting modem TX worker");
+            defmt::debug!("Starting modem TX worker");
 
             loop {
                 let msg = command_rx.receive().await;
@@ -429,7 +517,7 @@ where
             // The RX buffer needs to be quite large, e.g. a band scan response can be huge.
             let rx_buf = &mut [0; 4096];
 
-            defmt::info!("Starting modem RX worker");
+            defmt::debug!("Starting modem RX worker");
 
             loop {
                 // TODO: If we did not get a complete message we need to continue filling the

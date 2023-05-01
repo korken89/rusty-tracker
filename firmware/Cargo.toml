@@ -8,7 +8,7 @@ version = "0.1.0"
 [dependencies]
 cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
 
-defmt = "0.3"
+defmt = { version = "0.3", features = ["encoding-rzcobs"] }
 defmt-rtt = "0.4"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 #defmt-brtt = { git = "https://github.com/datdenkikniet/defmt-brtt.git" }
