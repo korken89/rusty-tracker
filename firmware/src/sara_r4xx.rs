@@ -76,7 +76,7 @@ mod consts {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, defmt::Format)]
-pub struct DnsResult(#[defmt(Debug2Format)] pub heapless::Vec<IpAddr, 3>);
+pub struct DnsResult(#[defmt(Debug2Format)] pub heapless::Vec<heapless::String<15>, 3>);
 
 static MODEM_STATE: Arbiter<Option<ModemState>> = Arbiter::new(None);
 
@@ -223,7 +223,7 @@ impl Modem {
         defmt::debug!("Modem: initializing");
 
         // Into minimal functionality
-        Self::early_command(&mut at_interface, "AT+CFUN=0\r\n", rx_buf).await?;
+        // Self::early_command(&mut at_interface, "AT+CFUN=0\r\n", rx_buf).await?;
 
         // Close all sockets (if some is open from last run), TODO: Check that this actually works
         Self::early_command(&mut at_interface, "AT+USOCL=0\r\n", rx_buf)
@@ -280,7 +280,9 @@ impl Modem {
         // TODO: Write config
 
         // Back to normal functionality
-        Self::early_command(&mut at_interface, "AT+CFUN=1\r\n", rx_buf).await?;
+        // Self::early_command(&mut at_interface, "AT+CFUN=1\r\n", rx_buf).await?;
+
+        // TODO: Wait for network registration
 
         // Create the communication channels
         let (command_tx, command_rx) = unsafe {

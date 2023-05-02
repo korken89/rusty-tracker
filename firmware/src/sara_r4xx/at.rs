@@ -282,17 +282,20 @@ impl CommandHint {
         }
     }
 
-    // The buffer holds the string without the hind and the ending `\r\nOK\r\n`
+    // The buffer holds the string without the hint and the ending `\r\nOK\r\n`
     fn parse(&self, buf: &[u8]) -> Result<(usize, Response), FromAtError> {
         match self {
             CommandHint::AllocateSocket => todo!(),
             CommandHint::DnsLookup => {
                 let mut ips = heapless::Vec::new();
                 for ip in buf.split(|ch| *ch == ',' as u8) {
+                    let ip = trim_ascii(ip);
+
                     // Each IP string, remove surrounding quotes
                     ips.push(heapless::String::from(
                         core::str::from_utf8(&ip[1..ip.len() - 1]).unwrap(),
-                    ));
+                    ))
+                    .ok();
                 }
 
                 return Ok((buf.len(), Response::DnsLookup { ips }));
@@ -377,6 +380,10 @@ pub const fn trim_ascii_end(mut bytes: &[u8]) -> &[u8] {
     bytes
 }
 
+pub const fn trim_ascii(bytes: &[u8]) -> &[u8] {
+    trim_ascii_end(trim_ascii_start(bytes))
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug, defmt::Format)]
 pub enum FromAtError {
     ErrorResponse,
@@ -396,13 +403,16 @@ impl Response {
         // TODO
         let hint_str = hint.to_hint();
 
+        let original_length = buf.len();
+        let buf = trim_ascii(buf);
+
         if buf.starts_with(hint_str.as_bytes()) {
             // TODO: Is this overkill?
             // if find_subsequence(buf, b"\r\nOK\r\n") {
             //     // There is a complete command in the buffer
             // }
             // VS this:
-            if !buf.ends_with(b"\r\nOK\r\n") {
+            if !buf.ends_with(b"\r\nOK") {
                 // More data is expected in this command
                 return Err(FromAtError::ExpectsMoreData);
             }
@@ -410,9 +420,7 @@ impl Response {
             // Expected command found, remove header including `:` and ending OK, and trim any
             // other whitespace
             let len = buf.len();
-            hint.parse(trim_ascii_end(trim_ascii_start(
-                &buf[hint_str.len() + 1..len - 6],
-            )))
+            hint.parse(trim_ascii(&buf[hint_str.len() + 1..len - 4]))
         } else if buf.starts_with(b"+CME") {
             defmt::error!("Got CME for {}", hint);
             Err(FromAtError::ErrorResponse)
@@ -519,18 +527,20 @@ where
 
             defmt::debug!("Starting modem RX worker");
 
+            let mut continue_from = 0;
+
             loop {
                 // TODO: If we did not get a complete message we need to continue filling the
                 // partial buffer.
 
-                let len = rx.read_until_idle(rx_buf).await;
+                let len = rx.read_until_idle(&mut rx_buf[continue_from..]).await + continue_from;
 
                 if len == 0 {
                     continue;
                 }
 
                 // Trunkate the rx buffer to the message
-                let mut rx_buf = &rx_buf[..len];
+                let rx_buf = &rx_buf[..len];
 
                 if let Ok(msg) = core::str::from_utf8(rx_buf) {
                     defmt::debug!("AT[worker] <- {}", msg);
@@ -542,39 +552,54 @@ where
                 // handle_command(&cmd_hint, rx_buf)
 
                 // If there is a command hint, we are expecting a response from a command.
-                if let Some(hint) = *cmd_hint.borrow_mut() {
-                    if let Ok((used_len, resp)) = Response::from_at(rx_buf, hint) {
-                        // Guaranteed to succeed
-                        response_tx
-                            .try_send(resp)
-                            .expect("ICE: There was already something in the response queue");
+                let hint = *cmd_hint.borrow_mut();
+                if let Some(hint) = hint {
+                    match Response::from_at(rx_buf, hint) {
+                        Ok((_, resp)) => {
+                            // Clear command hint, the response has been found
+                            cmd_hint.take();
 
-                        // Clear command hint, the response has been found
-                        cmd_hint.take();
-
-                        // Current assumption: we won't get data so close together so response
-                        // and unsolicited will be within the idle timeout.
-                        if used_len < len {
-                            // Trunkate rx_buf for unsolicited parsing
-                            rx_buf = &rx_buf[used_len..];
-
-                            defmt::warn!(
-                                "Unhandled buffer (len = {}) from command '{}': {}",
-                                len - used_len,
-                                hint,
-                                core::str::from_utf8(rx_buf).ok()
+                            // Guaranteed to succeed
+                            assert!(
+                                response_tx.try_send(resp).is_none(),
+                                "ICE: There was already something in the response queue"
                             );
+                            continue_from = 0;
+                            continue;
 
-                            // Try to parse unsolicited, fall through to the next block
-                        } else {
-                            // All of the buffer was used, wait for the next message
+                            // Current assumption: we won't get data so close together so response
+                            // and unsolicited will be within the idle timeout.
+                            // if used_len < len {
+                            //     // Trunkate rx_buf for unsolicited parsing
+                            //     rx_buf = &rx_buf[used_len..];
+
+                            //     defmt::warn!(
+                            //         "Unhandled buffer (len = {}) from command '{}': {}",
+                            //         len - used_len,
+                            //         hint,
+                            //         core::str::from_utf8(rx_buf).ok()
+                            //     );
+
+                            //     // Try to parse unsolicited, fall through to the next block
+                            // } else {
+                            //     // All of the buffer was used, wait for the next message
+                            //     continue;
+                            // }
+                        }
+                        Err(FromAtError::ExpectsMoreData) => {
+                            // TODO: What to do if there is an error in parsing? E.g. we did not yet
+                            // get the full response for some reason. This commonly happens for
+                            // commands that need some time to finish, e.g. a band-scan and DNS
+                            // (easy to test with one.one.one.one where responses come 100 ms appart).
+                            continue_from = len;
+                            defmt::error!("FromAtError, expecting more data, len = {}", len);
                             continue;
                         }
-                    } else {
-                        // TODO: What to do if there is an error in parsing? E.g. we did not yet
-                        // get the full response for some reason. This commonly happens for
-                        // commands that need some time to finish, e.g. a band-scan and DNS
-                        // (easy to test with one.one.one.one where responses come 100 ms appart).
+                        Err(e) => {
+                            continue_from = 0;
+                            defmt::error!("FromAtError: {}", e);
+                            continue;
+                        }
                     }
                 }
 
@@ -582,18 +607,14 @@ where
                 // handle_notification(rx_buf)
 
                 // Check if unsolicited notification
-                if let Ok((used_len, resp)) = Unsolicited::from_at(rx_buf) {
+                if let Ok((_, resp)) = Unsolicited::from_at(rx_buf) {
                     // TODO: Handle unsolicited notifications
 
                     // TODO: On `+UUSORD: <socket>,<length>`, wake the correct socket to make
                     // is start reading data or error if it's not used
                 }
 
-                defmt::error!(
-                    "Unhandled RX buffer (len = {}): {}",
-                    len,
-                    core::str::from_utf8(&rx_buf[..len]).ok()
-                );
+                defmt::error!("Unhandled RX buffer (len = {})", len,);
             }
         };
 

@@ -111,7 +111,17 @@ pub async fn modem_test() {
 
     defmt::info!("Starting modem test...");
 
-    defmt::info!("Performing DNS lookup");
-    let dns = sara_r4xx::Modem::dns_lookup("one.one.one.one").await;
-    defmt::info!("Result: {:?}", dns);
+    loop {
+        let host = "korken89.duckdns.org";
+        defmt::info!("Performing DNS lookup for '{}'", host);
+        let dns = sara_r4xx::Modem::dns_lookup(host).await;
+
+        if let Ok(dns) = dns {
+            for r in &dns.0 {
+                defmt::info!("Results: {}", r);
+            }
+        }
+
+        Systick::delay(1.secs()).await;
+    }
 }
