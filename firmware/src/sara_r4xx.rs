@@ -18,20 +18,17 @@
 //!
 //!
 
-use core::mem::MaybeUninit;
-
 use crate::{
     sara_r4xx::at::socket_buffer::StaticPingPongBuffer,
     ssq::{self, SingleSlotQueue},
 };
+use at::socket_buffer::WriteHandle;
 pub use at::{AsyncReadUntilIdle, AsyncWriter};
 use atomic_polyfill::{AtomicU8, Ordering};
 use heapless::String;
-use no_std_net::{IpAddr, SocketAddr};
+use no_std_net::SocketAddr;
 use rtic_common::waker_registration::CriticalSectionWakerRegistration;
 use rtic_sync::arbiter::Arbiter;
-
-use self::at::socket_buffer::WriteHandle;
 
 mod at;
 
@@ -223,7 +220,13 @@ impl Modem {
         defmt::debug!("Modem: initializing");
 
         // Into minimal functionality
-        // Self::early_command(&mut at_interface, "AT+CFUN=0\r\n", rx_buf).await?;
+        // Self::early_command(&mut at_interface, "ATZ\r\n", rx_buf).await?;
+        // Self::early_command(&mut at_interface, "AT&F0\r\n", rx_buf)
+        // .await
+        // .ok();
+        Self::early_command(&mut at_interface, "AT+CREG=0\r\n", rx_buf).await?;
+        Self::early_command(&mut at_interface, "AT+CFUN=0\r\n", rx_buf).await?;
+        Self::early_command(&mut at_interface, "AT+CREG=1\r\n", rx_buf).await?;
 
         // Close all sockets (if some is open from last run), TODO: Check that this actually works
         Self::early_command(&mut at_interface, "AT+USOCL=0\r\n", rx_buf)
@@ -280,9 +283,27 @@ impl Modem {
         // TODO: Write config
 
         // Back to normal functionality
-        // Self::early_command(&mut at_interface, "AT+CFUN=1\r\n", rx_buf).await?;
+        Self::early_command(&mut at_interface, "AT+CFUN=1\r\n", rx_buf).await?;
+
+        Self::early_command(&mut at_interface, "AT+CMEE=2\r\n", rx_buf).await?;
+
+        Self::early_command(&mut at_interface, "AT+CMUX?\r\n", rx_buf)
+            .await
+            .ok();
 
         // TODO: Wait for network registration
+        // Self::early_command(&mut at_interface, "AT+COPS=2\r\n", rx_buf)
+        //     .await
+        //     .ok();
+        // Self::early_command(&mut at_interface, "AT+CREG?\r\n", rx_buf)
+        //     .await
+        //     .ok();
+        // Self::early_command(&mut at_interface, "AT+COPS=0\r\n", rx_buf)
+        //     .await
+        //     .ok();
+        // Self::early_command(&mut at_interface, "AT+CREG?\r\n", rx_buf)
+        //     .await
+        //     .ok();
 
         // Create the communication channels
         let (command_tx, command_rx) = unsafe {

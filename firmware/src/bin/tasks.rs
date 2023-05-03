@@ -1,8 +1,9 @@
-use crate::{
+use crate::app::*;
+use rtic_monotonics::systick::*;
+use rusty_tracker::{
     bsp::{BoardLeds, ChargerStatus, ChargingStatus, LteComponents, Voltages},
     sara_r4xx,
 };
-use rtic_monotonics::systick::*;
 
 fn volt_to_rgb(v: f32) -> (f32, f32, f32) {
     let vmax = 4.2;
@@ -19,6 +20,7 @@ fn volt_to_rgb(v: f32) -> (f32, f32, f32) {
 }
 
 pub async fn led_control(
+    _: led_control::Context<'_>,
     mut leds: BoardLeds,
     mut voltages: Voltages,
     charger_status: ChargerStatus,
@@ -73,7 +75,7 @@ pub async fn led_control(
     }
 }
 
-pub async fn modem_worker(lte_components: LteComponents) -> ! {
+pub async fn modem_worker(_: modem_worker::Context<'_>, lte_components: LteComponents) -> ! {
     // Get the interface to the modem
     let LteComponents {
         io_interface,
@@ -104,15 +106,15 @@ pub async fn modem_worker(lte_components: LteComponents) -> ! {
     }
 }
 
-pub async fn modem_test() {
+pub async fn modem_test(_: modem_test::Context<'_>) {
     while !sara_r4xx::Modem::is_initialized() {
-        Systick::delay(1.secs()).await;
+        Systick::delay(10.secs()).await;
     }
 
     defmt::info!("Starting modem test...");
 
     loop {
-        let host = "korken89.duckdns.org";
+        let host = "www.google.com";
         defmt::info!("Performing DNS lookup for '{}'", host);
         let dns = sara_r4xx::Modem::dns_lookup(host).await;
 

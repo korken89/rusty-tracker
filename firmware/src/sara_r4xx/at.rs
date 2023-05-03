@@ -512,7 +512,7 @@ where
                 let to_send = msg.to_at(tx_buf).expect("ICE: Comms worker");
 
                 if let Ok(msg) = core::str::from_utf8(to_send) {
-                    defmt::debug!("AT[worker] -> {}", msg);
+                    defmt::debug!("AT[worker] -> {}", msg.trim());
                 } else {
                     defmt::debug!("AT[worker] -> [garbled] {:x}", to_send);
                 }
@@ -543,7 +543,7 @@ where
                 let rx_buf = &rx_buf[..len];
 
                 if let Ok(msg) = core::str::from_utf8(rx_buf) {
-                    defmt::debug!("AT[worker] <- {}", msg);
+                    defmt::debug!("AT[worker] <- {}", msg.trim());
                 } else {
                     defmt::debug!("AT[worker] <- [garbled] {:x}", rx_buf);
                 }

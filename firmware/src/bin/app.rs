@@ -7,6 +7,8 @@
 use rtic_monotonics::{nrf::timer::fugit::MicrosDurationU32, systick::Systick, Monotonic};
 use rusty_tracker as _; // global logger + panicking-behavior + memory layout
 
+pub mod tasks;
+
 defmt::timestamp!("{=u64:us}", {
     let time_us: MicrosDurationU32 = Systick::now().duration_since_epoch().convert();
 
@@ -21,8 +23,8 @@ pub mod pac {
 
 #[rtic::app(device = crate::pac, dispatchers = [SWI0_EGU0], peripherals = false)]
 mod app {
+    use crate::tasks::*;
     use rusty_tracker::bsp::{BoardLeds, ChargerStatus, LteComponents, Voltages};
-    use rusty_tracker::tasks;
 
     #[shared]
     struct Shared {}
@@ -43,24 +45,20 @@ mod app {
         (Shared {}, Local {})
     }
 
-    #[task]
-    async fn modem_test(_: modem_test::Context) {
-        tasks::modem_test().await;
-    }
+    extern "Rust" {
+        #[task]
+        async fn modem_test(_: modem_test::Context);
 
-    #[task]
-    async fn modem_worker(_: modem_worker::Context, lte_components: LteComponents) {
-        tasks::modem_worker(lte_components).await;
-    }
+        #[task]
+        async fn modem_worker(_: modem_worker::Context, lte_components: LteComponents);
 
-    #[task]
-    async fn led_control(
-        _: led_control::Context,
-        leds: BoardLeds,
-        voltages: Voltages,
-        charger_status: ChargerStatus,
-    ) {
-        tasks::led_control(leds, voltages, charger_status).await;
+        #[task]
+        async fn led_control(
+            _: led_control::Context,
+            leds: BoardLeds,
+            voltages: Voltages,
+            charger_status: ChargerStatus,
+        );
     }
 
     // #[task]
